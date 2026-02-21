@@ -143,11 +143,14 @@ backend:
     file: "chat/views.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: true
           agent: "main"
           comment: "Creates new chat session"
+        - working: true
+          agent: "testing"
+          comment: "✅ PASSED - Successfully creates new session with proper UUID, title, and empty messages array. Returns 201 status."
 
   - task: "Get session detail GET /api/sessions/<id>/"
     implemented: true
