@@ -90,3 +90,7 @@ htmlcov/
 *.bak
 *.tmp
 *.temp
+-e 
+# Environment files
+*.env
+*.env.*
