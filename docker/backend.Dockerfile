@@ -22,7 +22,7 @@ RUN apt-get update && \
 # ---------------------------------------------------------------------------
 FROM base AS deps
 
-COPY backend/requirements.txt /app/requirements.txt
+COPY docker/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # ---------------------------------------------------------------------------
