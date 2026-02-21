@@ -1088,7 +1088,7 @@ curl http://localhost:8001/api/status/
 
 ---
 
-## 14. Error Handling & Resilience
+## 15. Error Handling & Resilience
 
 ### Backend Error Handling
 
