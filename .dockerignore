@@ -1,0 +1,39 @@
+# =============================================================================
+# PSPD Guardian — Dockerignore
+# =============================================================================
+
+# Git
+.git
+.gitignore
+
+# Node
+frontend/node_modules
+frontend/.env
+frontend/build
+
+# Python
+backend/__pycache__
+backend/**/__pycache__
+backend/**/*.pyc
+backend/.env
+*.egg-info
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Docker
+docker-compose.override.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+/var/log
+
+# Test results
+test_result.md

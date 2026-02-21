@@ -1,0 +1,160 @@
+# =============================================================================
+# PSPD Guardian — Docker Compose Orchestration
+#
+# Services:
+#   1. postgres     — PostgreSQL 15 (relational database)
+#   2. qdrant       — Qdrant 1.12.1 (vector similarity search)
+#   3. backend      — Django 5 + Gunicorn + RAG pipeline
+#   4. frontend     — React 19 built assets served by Nginx
+#   5. nginx        — Reverse proxy (unified entry point)
+#
+# External dependency (not containerized):
+#   - Ollama LLM server at OLLAMA_BASE_URL (default: http://31.220.21.156:11434)
+#
+# Usage:
+#   docker compose up -d --build
+#   docker compose logs -f backend       # Watch backend startup + ingestion
+#   docker compose down -v               # Tear down (remove volumes)
+# =============================================================================
+
+version: "3.9"
+
+services:
+  # -------------------------------------------------------------------------
+  # PostgreSQL 15 — Relational Database
+  # -------------------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: guardian-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PG_DB_NAME:-guardian_db}
+      POSTGRES_USER: ${PG_DB_USER:-guardian_user}
+      POSTGRES_PASSWORD: ${PG_DB_PASSWORD:-guardian_pass}
+    ports:
+      - "${PG_EXTERNAL_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_DB_USER:-guardian_user} -d ${PG_DB_NAME:-guardian_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - guardian-net
+
+  # -------------------------------------------------------------------------
+  # Qdrant 1.12.1 — Vector Similarity Search Engine
+  # -------------------------------------------------------------------------
+  qdrant:
+    image: qdrant/qdrant:v1.12.1
+    container_name: guardian-qdrant
+    restart: unless-stopped
+    ports:
+      - "${QDRANT_EXTERNAL_PORT:-6333}:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - guardian-net
+
+  # -------------------------------------------------------------------------
+  # Backend — Django 5 + Gunicorn + RAG Pipeline
+  # -------------------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: guardian-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    environment:
+      # Django
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-change-me-in-production-use-a-long-random-string}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
+
+      # PostgreSQL (service name = hostname inside Docker network)
+      PG_DB_NAME: ${PG_DB_NAME:-guardian_db}
+      PG_DB_USER: ${PG_DB_USER:-guardian_user}
+      PG_DB_PASSWORD: ${PG_DB_PASSWORD:-guardian_pass}
+      PG_DB_HOST: postgres
+      PG_DB_PORT: "5432"
+
+      # Qdrant (service name = hostname inside Docker network)
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: "6333"
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-guardian_incidents}
+
+      # Ollama (remote server)
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://31.220.21.156:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+
+      # Gunicorn
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
+      GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-300}
+    ports:
+      - "${BACKEND_EXTERNAL_PORT:-8001}:8001"
+    networks:
+      - guardian-net
+
+  # -------------------------------------------------------------------------
+  # Frontend — React 19 + Nginx (static serve)
+  # -------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    container_name: guardian-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      REACT_APP_BACKEND_URL: ${REACT_APP_BACKEND_URL:-http://localhost:8080}
+    ports:
+      - "${FRONTEND_EXTERNAL_PORT:-3000}:3000"
+    networks:
+      - guardian-net
+
+  # -------------------------------------------------------------------------
+  # Nginx Reverse Proxy — Unified Entry Point
+  # -------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: guardian-proxy
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
+    ports:
+      - "${PROXY_PORT:-8080}:80"
+    volumes:
+      - ./docker/nginx-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - guardian-net
+
+# =============================================================================
+# Volumes — Persistent Data
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  qdrant_data:
+    driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  guardian-net:
+    driver: bridge
