@@ -1071,7 +1071,7 @@ curl http://localhost:8001/api/status/
 
 ---
 
-## 13. Performance Characteristics
+## 14. Performance Characteristics
 
 | Metric | Value | Notes |
 |---|---|---|
