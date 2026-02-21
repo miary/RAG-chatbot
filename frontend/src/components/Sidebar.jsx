@@ -1,7 +1,7 @@
 import React from 'react';
 import { Plus, MessageSquare } from 'lucide-react';
 
-const Sidebar = ({ chatHistory, agentStatus, onNewChat, isOpen, onToggle }) => {
+const Sidebar = ({ chatHistory, agentStatus, onNewChat, onSelectChat, isOpen, onToggle }) => {
   return (
     <>
       {/* Mobile overlay */}
@@ -36,23 +36,24 @@ const Sidebar = ({ chatHistory, agentStatus, onNewChat, isOpen, onToggle }) => {
         </div>
 
         {/* Chat History List / Empty State */}
-        <div className="flex-1 flex flex-col items-center justify-center px-4">
+        <div className="flex-1 flex flex-col px-2 py-2 overflow-y-auto">
           {chatHistory.length === 0 ? (
-            <div className="text-center">
+            <div className="flex-1 flex flex-col items-center justify-center px-2">
               <MessageSquare size={48} className="text-[#2a3a5c] mx-auto mb-3" />
               <p className="text-[#BCCBF2] text-sm font-bold mb-1">No chat history yet</p>
               <p className="text-white text-xs opacity-80">Start a new conversation</p>
             </div>
           ) : (
-            <div className="w-full space-y-2 overflow-y-auto">
+            <div className="w-full space-y-1">
               {chatHistory.map((chat, index) => (
-                <div
-                  key={index}
-                  className="p-2 rounded-lg hover:bg-[#1c2e4c] cursor-pointer transition-colors"
+                <button
+                  key={chat.id || index}
+                  onClick={() => onSelectChat && onSelectChat(chat.id)}
+                  className="w-full text-left p-2.5 rounded-lg hover:bg-[#1c2e4c] cursor-pointer transition-colors"
                 >
                   <p className="text-white text-xs truncate">{chat.title}</p>
                   <p className="text-[#BCCBF2] text-[10px] mt-0.5">{chat.date}</p>
-                </div>
+                </button>
               ))}
             </div>
           )}
