@@ -185,7 +185,11 @@ backend:
     file: "chat/views.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "✅ PASSED - Successfully clears all messages in session, returns proper status, verified by checking session detail shows empty messages array."
 
   - task: "Send message with RAG POST /api/chat/"
     implemented: true
