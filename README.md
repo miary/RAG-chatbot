@@ -13,10 +13,11 @@
 9. [API Reference](#9-api-reference)
 10. [Knowledge Base — Ingested Documents](#10-knowledge-base--ingested-documents)
 11. [Environment Configuration](#11-environment-configuration)
-12. [Deployment & Infrastructure](#12-deployment--infrastructure)
-13. [Performance Characteristics](#13-performance-characteristics)
-14. [Error Handling & Resilience](#14-error-handling--resilience)
-15. [Project Structure](#15-project-structure)
+12. [Docker Deployment](#12-docker-deployment)
+13. [Deployment & Infrastructure (Non-Docker)](#13-deployment--infrastructure-non-docker)
+14. [Performance Characteristics](#14-performance-characteristics)
+15. [Error Handling & Resilience](#15-error-handling--resilience)
+16. [Project Structure](#16-project-structure)
 
 ---
 
