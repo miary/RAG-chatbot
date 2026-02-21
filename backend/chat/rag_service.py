@@ -32,6 +32,7 @@ def get_qdrant():
         _qdrant_client = QdrantClient(
             host=settings.QDRANT_HOST,
             port=settings.QDRANT_PORT,
+            check_compatibility=False,
         )
         logger.info('Connected to Qdrant at %s:%s', settings.QDRANT_HOST, settings.QDRANT_PORT)
     return _qdrant_client
