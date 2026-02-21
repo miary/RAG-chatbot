@@ -128,11 +128,14 @@ backend:
     file: "chat/views.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: true
           agent: "main"
           comment: "Returns list of chat sessions"
+        - working: true
+          agent: "testing"
+          comment: "✅ PASSED - Successfully lists all sessions, found test session in response. Returns proper JSON array format."
 
   - task: "Create session POST /api/sessions/"
     implemented: true
