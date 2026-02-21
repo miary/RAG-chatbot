@@ -1,9 +1,20 @@
 import logging
 
-import ollama
+from ollama import Client
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+# Create Ollama client pointing to the configured (possibly remote) server
+_ollama_client = None
+
+
+def get_ollama_client():
+    global _ollama_client
+    if _ollama_client is None:
+        _ollama_client = Client(host=settings.OLLAMA_BASE_URL)
+        logger.info('Ollama client configured for %s', settings.OLLAMA_BASE_URL)
+    return _ollama_client
 
 
 def build_rag_prompt(query: str, context_docs: list[dict]) -> str:
