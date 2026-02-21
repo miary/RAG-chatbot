@@ -814,7 +814,217 @@ Each document contains a detailed natural-language description (100–300 words)
 
 ---
 
-## 12. Deployment & Infrastructure
+## 12. Docker Deployment
+
+### 12.1 Prerequisites
+
+| Requirement | Minimum Version |
+|---|---|
+| Docker Engine | 24.0+ |
+| Docker Compose | 2.20+ (V2 plugin) |
+| Available RAM | 4 GB (2 GB for backend + embedding model, 512 MB PostgreSQL, 256 MB Qdrant, 256 MB Nginx/frontend) |
+| Available Disk | 8 GB (Docker images + model cache + database storage) |
+| Network Access | Outbound to Ollama server at `OLLAMA_BASE_URL` |
+
+### 12.2 Quick Start
+
+```bash
+# 1. Clone the repository
+git clone <repository-url>
+cd pspd-guardian
+
+# 2. Create environment file from template
+cp .env.docker .env
+
+# 3. (Optional) Edit .env to customize settings
+#    - Change OLLAMA_BASE_URL if using a different Ollama server
+#    - Set DJANGO_SECRET_KEY to a secure random value
+#    - Set REACT_APP_BACKEND_URL to your public domain
+
+# 4. Build and start all services
+docker compose up -d --build
+
+# 5. Watch backend startup (migrations + data ingestion)
+docker compose logs -f backend
+
+# 6. Open the application
+#    http://localhost:8080
+```
+
+### 12.3 Architecture — Containerized
+
+```
+                         ┌──────────────────────┐
+                         │  Browser              │
+                         │  http://localhost:8080 │
+                         └──────────┬───────────┘
+                                    │
+                         ┌──────────▼───────────┐
+                         │  nginx (port 80)      │
+                         │  guardian-proxy        │
+                         │                       │
+                         │  /api/* → backend:8001│
+                         │  /*     → frontend:3000│
+                         └──┬──────────────┬────┘
+                            │              │
+              ┌─────────────▼──┐   ┌───────▼──────────┐
+              │  backend:8001  │   │  frontend:3000   │
+              │  Django 5 +    │   │  Nginx serving   │
+              │  Gunicorn +    │   │  React 19 build  │
+              │  RAG Pipeline  │   └──────────────────┘
+              └──┬──────┬──┬──┘
+                 │      │  │
+        ┌────────▼──┐ ┌─▼──▼───────┐  ┌─────────────────┐
+        │ postgres  │ │  qdrant    │  │  Ollama (remote) │
+        │ port 5432 │ │  port 6333 │  │  :11434          │
+        └───────────┘ └────────────┘  └─────────────────┘
+         (volume)      (volume)        (external)
+```
+
+### 12.4 Docker Files Reference
+
+```
+/app
+├── docker-compose.yml              # Orchestration — 5 services
+├── .env.docker                     # Template environment variables
+├── .dockerignore                   # Build exclusions
+├── Makefile                        # Convenience commands
+└── docker/
+    ├── backend.Dockerfile          # Multi-stage: deps → model cache → runtime
+    ├── frontend.Dockerfile         # Multi-stage: Node build → Nginx serve
+    ├── requirements.txt            # Clean Python dependencies for Docker
+    ├── entrypoint-backend.sh       # Waits for deps, runs migrations, ingests data
+    ├── entrypoint-frontend.sh      # Runtime env injection into JS bundles
+    ├── nginx-frontend.conf         # Nginx config for SPA serving
+    └── nginx-proxy.conf            # Reverse proxy: /api/* → backend, /* → frontend
+```
+
+### 12.5 Service Details
+
+| Service | Image | Container Name | Internal Port | External Port | Health Check |
+|---|---|---|---|---|---|
+| `postgres` | `postgres:15-alpine` | `guardian-postgres` | 5432 | 5432 | `pg_isready` |
+| `qdrant` | `qdrant/qdrant:v1.12.1` | `guardian-qdrant` | 6333, 6334 | 6333 | `curl /healthz` |
+| `backend` | Custom (Python 3.11) | `guardian-backend` | 8001 | 8001 | `curl /api/` |
+| `frontend` | Custom (Nginx 1.27) | `guardian-frontend` | 3000 | 3000 | `curl /` |
+| `nginx` | `nginx:1.27-alpine` | `guardian-proxy` | 80 | 8080 | — |
+
+### 12.6 Backend Dockerfile — Multi-Stage Build
+
+The backend Dockerfile uses a **3-stage build** to optimize layer caching:
+
+```
+Stage 1: base         → System deps (libpq, gcc, curl)
+Stage 2: deps         → pip install from requirements.txt
+Stage 3: model-cache  → Downloads all-MiniLM-L6-v2 (~80 MB) into image
+Stage 4: runtime      → Copies app source + entrypoint
+```
+
+**Why bake the embedding model into the image?**
+Without this, every container restart would re-download the model from Hugging Face Hub (~80 MB), adding 10–30 seconds to startup. By caching it in the Docker image layer, the model is instantly available on container start.
+
+### 12.7 Frontend Dockerfile — Runtime Environment Injection
+
+React apps embed environment variables at **build time** (`process.env.REACT_APP_*`). To allow runtime configuration (e.g., changing the backend URL without rebuilding), the frontend Dockerfile uses a two-step approach:
+
+1. **Build time**: Sets `REACT_APP_BACKEND_URL=__BACKEND_URL_PLACEHOLDER__`
+2. **Runtime**: `entrypoint-frontend.sh` replaces the placeholder string in all compiled JS bundles with the actual `REACT_APP_BACKEND_URL` value from the container's environment
+
+This allows the same Docker image to be deployed to different environments just by changing the env var.
+
+### 12.8 Backend Entrypoint — Startup Sequence
+
+The `entrypoint-backend.sh` script performs a **5-step initialization** before starting Gunicorn:
+
+| Step | Action | Wait For |
+|---|---|---|
+| 1 | Wait for PostgreSQL | `psycopg2.connect()` succeeds |
+| 2 | Wait for Qdrant | `curl /healthz` returns 200 |
+| 3 | Run Django migrations | `manage.py migrate --noinput` |
+| 4 | Collect static files | `manage.py collectstatic` |
+| 5 | Ingest documents into Qdrant | `ensure_collection()` + `ingest_documents()` |
+
+Steps 1–2 use retry loops with 2-second intervals, ensuring the backend doesn't crash if PostgreSQL or Qdrant is slow to start.
+
+Step 5 uses Qdrant's **upsert** operation, making it idempotent — running it multiple times won't create duplicate documents.
+
+### 12.9 Makefile Commands
+
+```bash
+make help              # Show all available commands
+make build             # Build all Docker images
+make up                # Start all services (detached)
+make up-logs           # Start and follow logs
+make down              # Stop all services
+make down-clean        # Stop and DELETE all data volumes
+make restart           # Restart all services
+make restart-backend   # Restart only backend
+make logs              # Follow all logs
+make logs-backend      # Follow backend logs only
+make status            # Show container status
+make health            # Check health of all services
+make ingest            # Re-ingest Guardian data into Qdrant
+make shell-backend     # Open bash in backend container
+make shell-db          # Open psql in PostgreSQL
+make migrate           # Run Django migrations
+```
+
+### 12.10 Environment Variables
+
+Copy `.env.docker` to `.env` and customize:
+
+```bash
+# ---- PostgreSQL ----
+PG_DB_NAME=guardian_db
+PG_DB_USER=guardian_user
+PG_DB_PASSWORD=guardian_pass          # CHANGE IN PRODUCTION
+
+# ---- Ollama (Remote LLM) ----
+OLLAMA_BASE_URL=http://31.220.21.156:11434
+OLLAMA_MODEL=llama3.1:8b
+
+# ---- Django ----
+DJANGO_SECRET_KEY=change-me-use-long-random-string  # CHANGE IN PRODUCTION
+
+# ---- Gunicorn ----
+GUNICORN_WORKERS=2                    # Set to (2 × CPU cores + 1) in production
+GUNICORN_TIMEOUT=300                  # Increase if Ollama is very slow
+
+# ---- Ports ----
+PROXY_PORT=8080                       # Public-facing port
+BACKEND_EXTERNAL_PORT=8001            # Direct backend access (optional)
+FRONTEND_EXTERNAL_PORT=3000           # Direct frontend access (optional)
+
+# ---- Frontend ----
+REACT_APP_BACKEND_URL=http://localhost:8080   # Set to public domain in prod
+```
+
+### 12.11 Production Deployment Checklist
+
+- [ ] Set `DJANGO_SECRET_KEY` to a cryptographically random 50+ character string
+- [ ] Set `PG_DB_PASSWORD` to a strong password
+- [ ] Set `DJANGO_DEBUG=False`
+- [ ] Set `REACT_APP_BACKEND_URL` to your public domain (e.g., `https://guardian.example.com`)
+- [ ] Set `GUNICORN_WORKERS` to `(2 × CPU cores + 1)`
+- [ ] Configure TLS termination (Nginx or load balancer)
+- [ ] Set up external PostgreSQL backup strategy
+- [ ] Set up Qdrant snapshot backups
+- [ ] Monitor Ollama server availability
+- [ ] Set up log aggregation (e.g., `docker compose logs` to Fluentd/ELK)
+
+### 12.12 Scaling Considerations
+
+| Component | Scaling Strategy |
+|---|---|
+| **Backend** | Increase `GUNICORN_WORKERS` or run multiple backend replicas behind a load balancer |
+| **PostgreSQL** | Use managed service (AWS RDS, GCP Cloud SQL) with read replicas |
+| **Qdrant** | Qdrant supports distributed mode with sharding for large document collections |
+| **Ollama** | Use a GPU-accelerated server or cloud LLM API for faster inference |
+| **Frontend** | Already static — serve via CDN for global distribution |
+
+---
+
+## 13. Deployment & Infrastructure (Non-Docker)
 
 ### Process Management (Supervisor)
 
