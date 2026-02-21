@@ -17,19 +17,19 @@ const SubHeader = ({ serviceAuth, connectionStatus, onClearChat }) => {
 
       {/* Guardian Support Chat Bar */}
       <div
-        className="px-4 py-3 flex items-center justify-between border-b border-[#d7d7d7]/10"
+        className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#d7d7d7]/10"
         style={{ backgroundColor: '#0f1d35' }}
       >
-        <div>
+        <div className="min-w-0">
           <h2 className="text-white text-base font-bold leading-tight">Guardian Support Chat</h2>
           <p className="text-white/60 text-xs mt-0.5">Ask questions about Guardian incidents and solutions</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {/* Clear Chat Button */}
           <button
             onClick={onClearChat}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-medium transition-all hover:opacity-90 active:scale-95"
+            className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-white text-xs font-medium transition-all hover:opacity-90 active:scale-95 whitespace-nowrap"
             style={{
               background: 'linear-gradient(180deg, #1d2d49 0%, #0a387b 100%)',
             }}
@@ -39,7 +39,7 @@ const SubHeader = ({ serviceAuth, connectionStatus, onClearChat }) => {
           </button>
 
           {/* Connected Badge */}
-          <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-xs font-medium">
+          <div className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-white text-xs font-medium whitespace-nowrap">
             <div className="w-3.5 h-3.5 rounded-full border-2 border-[#00AAAA] flex items-center justify-center">
               <CheckCircle size={10} className="text-[#00AAAA]" />
             </div>
