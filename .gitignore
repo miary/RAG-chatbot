@@ -1,80 +1,92 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# =============================================================================
+# PSPD Guardian — .gitignore
+# =============================================================================
 
-# IDE and editors
-.idea/
-.vscode/
-
-# Dependencies
-node_modules/
-/node_modules
-/.pnp
-.pnp.js
-.yarn/install-state.gz
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# Testing
-/coverage
-
-# Next.js
-/.next/
-/out/
-next-env.d.ts
-*.tsbuildinfo
-
-# Production builds
-/build
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
 dist/
-dist
+build/
+.eggs/
+*.whl
 
-# Environment files (comprehensive coverage)
+# ---- Virtual Environments ----
+.venv/
+venv/
+env/
+ENV/
 
-*token.json*
-*credentials.json*
+# ---- Django ----
+*.log
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+media/
 
-# Logs and debug files
+# ---- Node / React ----
+frontend/node_modules/
+frontend/build/
+frontend/.pnp
+frontend/.pnp.js
+frontend/coverage/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
-dump.rdb
 
-# System files
+# ---- Environment Variables (contain secrets) ----
+.env
+backend/.env
+frontend/.env
+
+# ---- Docker ----
+docker-compose.override.yml
+
+# ---- IDE / Editor ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*~
+.project
+.classpath
+.settings/
+
+# ---- OS ----
 .DS_Store
-*.pem
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Python
-__pycache__/
-*pyc*
-venv/
-.venv/
+# ---- Testing ----
+test_result.md
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+.nox/
 
-# Development tools
-chainlit.md
-.chainlit
-.ipynb_checkpoints/
-.ac
+# ---- Logs ----
+*.log
+/var/log/
 
-# Deployment
-.vercel
-
-# Data and databases
-agenthub/agents/youtube/db
-
-# Archive files and large assets
-**/*.zip
-**/*.tar.gz
-**/*.tar
-**/*.tgz
-*.pack
-*.deb
-*.dylib
-
-# Build caches
+# ---- ML Model Cache (downloaded at runtime or baked into Docker) ----
+*.bin
+*.safetensors
 .cache/
 
-# Mobile development
-android-sdk/ 
+# ---- Qdrant Local Storage ----
+/var/lib/qdrant/
+
+# ---- Misc ----
+*.bak
+*.tmp
+*.temp
