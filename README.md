@@ -1115,6 +1115,20 @@ curl http://localhost:8001/api/status/
 
 ```
 /app
+├── docker-compose.yml                 # Docker orchestration (5 services)
+├── .env.docker                        # Environment variable template
+├── .dockerignore                      # Docker build exclusions
+├── Makefile                           # Convenience commands (make up, make logs, etc.)
+├── README.md                          # This file
+├── contracts.md                       # API contract documentation
+├── docker/
+│   ├── backend.Dockerfile             # Multi-stage Python 3.11 + model cache
+│   ├── frontend.Dockerfile            # Multi-stage Node 20 build → Nginx serve
+│   ├── requirements.txt               # Clean Python deps for Docker
+│   ├── entrypoint-backend.sh          # Wait for deps → migrate → ingest → gunicorn
+│   ├── entrypoint-frontend.sh         # Runtime env var injection into JS bundles
+│   ├── nginx-frontend.conf            # SPA serving config
+│   └── nginx-proxy.conf              # Reverse proxy: /api/* → backend, /* → frontend
 ├── backend/
 │   ├── .env                           # Environment configuration
 │   ├── manage.py                      # Django CLI
@@ -1160,8 +1174,6 @@ curl http://localhost:8001/api/status/
 │       │   └── use-toast.js           # Toast notification hook
 │       └── lib/
 │           └── utils.js               # Tailwind class merge utility
-├── contracts.md                       # API contract documentation
-└── README.md                          # This file
 ```
 
 ---
