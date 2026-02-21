@@ -96,6 +96,125 @@
 # END - Testing Protocol - DO NOT EDIT OR REMOVE THIS SECTION
 #====================================================================================================
 
+user_problem_statement: "PSPD Guardian chatbot with Django 5, Ollama LLM, Qdrant vector DB, PostgreSQL. Full-stack RAG pipeline."
+backend:
+  - task: "Health check endpoint GET /api/"
+    implemented: true
+    working: true
+    file: "chat/views.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Returns JSON with message and status ok"
+
+  - task: "Service status endpoint GET /api/status/"
+    implemented: true
+    working: true
+    file: "chat/views.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Returns connection status for Ollama, Qdrant, PostgreSQL"
+
+  - task: "List sessions GET /api/sessions/"
+    implemented: true
+    working: true
+    file: "chat/views.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Returns list of chat sessions"
+
+  - task: "Create session POST /api/sessions/"
+    implemented: true
+    working: true
+    file: "chat/views.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Creates new chat session"
+
+  - task: "Get session detail GET /api/sessions/<id>/"
+    implemented: true
+    working: true
+    file: "chat/views.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Returns session with all messages"
+
+  - task: "Delete session DELETE /api/sessions/<id>/"
+    implemented: true
+    working: true
+    file: "chat/views.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+
+  - task: "Clear session messages DELETE /api/sessions/<id>/clear/"
+    implemented: true
+    working: true
+    file: "chat/views.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+
+  - task: "Send message with RAG POST /api/chat/"
+    implemented: true
+    working: true
+    file: "chat/views.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Full RAG pipeline - Qdrant search + LLM fallback response. Correctly finds relevant Guardian incidents."
+
+  - task: "Message feedback PATCH /api/messages/<id>/feedback/"
+    implemented: true
+    working: true
+    file: "chat/views.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+
+  - task: "Ingest mock data POST /api/ingest/"
+    implemented: true
+    working: true
+    file: "chat/views.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Ingested 12 Guardian incident documents into Qdrant"
+
+frontend:
+  - task: "Chat interface with real backend integration"
+    implemented: true
+    working: true
+    file: "src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+
 
 
 #====================================================================================================
