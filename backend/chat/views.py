@@ -36,8 +36,9 @@ def service_status(request):
 
     # Check Ollama
     try:
-        import ollama as ollama_client
-        ollama_client.list()
+        from .llm_service import get_ollama_client
+        client = get_ollama_client()
+        client.list()
         statuses['ollama'] = True
     except Exception as e:
         logger.warning('Ollama not reachable: %s', e)
