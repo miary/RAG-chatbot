@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
-import { ThumbsUp, ThumbsDown, Send } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Send, Loader2 } from 'lucide-react';
 
-/* ── Robot Icon (used for bot avatar) ── */
+/* --- Robot Icon (used for bot avatar) --- */
 const BotAvatar = ({ size = 43 }) => (
   <div
     className="rounded-full flex items-center justify-center border-2 border-[#6893ff] flex-shrink-0"
@@ -40,7 +40,7 @@ const UserAvatar = ({ size = 43 }) => (
   </div>
 );
 
-/* ── Welcome State ── */
+/* --- Welcome State --- */
 const WelcomeState = () => (
   <div className="flex-1 flex flex-col items-center justify-center px-4">
     <BotAvatar size={78} />
@@ -52,40 +52,60 @@ const WelcomeState = () => (
   </div>
 );
 
-/* ── Bot Message ── */
-const BotMessage = ({ message }) => (
+/* --- Format bot text with markdown-like bold --- */
+const FormatText = ({ text }) => {
+  if (!text) return null;
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={i}>{part.slice(2, -2)}</strong>;
+        }
+        // Handle newlines
+        return part.split('\n').map((line, j) => (
+          <React.Fragment key={`${i}-${j}`}>
+            {j > 0 && <br />}
+            {line}
+          </React.Fragment>
+        ));
+      })}
+    </>
+  );
+};
+
+/* --- Bot Message --- */
+const BotMessage = ({ message, onFeedback }) => (
   <div className="flex items-start gap-3 max-w-[85%]">
     <BotAvatar size={43} />
     <div>
       <div className="rounded-xl px-4 py-3 bg-white text-[#1a1a2e] text-sm leading-relaxed">
-        {message.link ? (
-          <>
-            <span>User guides can be found at </span>
-            <a
-              href={message.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#0a387b] underline hover:text-[#6893ff] transition-colors"
-            >
-              {message.link.replace('https://', '')}
-            </a>
-          </>
-        ) : (
-          message.text
-        )}
+        <FormatText text={message.text} />
 
         {message.showFeedback && (
-          <>
-            <div className="border-t border-gray-200 mt-3 pt-2 flex items-center gap-3">
-              <span className="text-xs text-gray-500">Was this helpful?</span>
-              <button className="text-[#1c2e4c] hover:text-[#6893ff] transition-colors">
-                <ThumbsUp size={16} />
-              </button>
-              <button className="text-[#1c2e4c] hover:text-[#6893ff] transition-colors">
-                <ThumbsDown size={16} />
-              </button>
-            </div>
-          </>
+          <div className="border-t border-gray-200 mt-3 pt-2 flex items-center gap-3">
+            <span className="text-xs text-gray-500">Was this helpful?</span>
+            <button
+              onClick={() => onFeedback && onFeedback(message.id, 'up')}
+              className={`transition-colors ${
+                message.feedback === 'up'
+                  ? 'text-[#6893ff]'
+                  : 'text-[#1c2e4c] hover:text-[#6893ff]'
+              }`}
+            >
+              <ThumbsUp size={16} />
+            </button>
+            <button
+              onClick={() => onFeedback && onFeedback(message.id, 'down')}
+              className={`transition-colors ${
+                message.feedback === 'down'
+                  ? 'text-red-500'
+                  : 'text-[#1c2e4c] hover:text-red-500'
+              }`}
+            >
+              <ThumbsDown size={16} />
+            </button>
+          </div>
         )}
       </div>
       <span className="text-white/40 text-[11px] mt-1 block">{message.timestamp}</span>
@@ -93,7 +113,7 @@ const BotMessage = ({ message }) => (
   </div>
 );
 
-/* ── User Message ── */
+/* --- User Message --- */
 const UserMessage = ({ message }) => (
   <div className="flex items-start gap-3 justify-end">
     <div className="text-right">
@@ -109,13 +129,32 @@ const UserMessage = ({ message }) => (
   </div>
 );
 
-/* ── Main Chat Area ── */
-const ChatArea = ({ messages, inputValue, onInputChange, onSendMessage, showWelcome }) => {
+/* --- Typing indicator --- */
+const TypingIndicator = () => (
+  <div className="flex items-start gap-3 max-w-[85%]">
+    <BotAvatar size={43} />
+    <div className="rounded-xl px-4 py-3 bg-white/90 flex items-center gap-2">
+      <Loader2 size={16} className="animate-spin text-[#6893ff]" />
+      <span className="text-sm text-gray-500">Searching Guardian incidents...</span>
+    </div>
+  </div>
+);
+
+/* --- Main Chat Area --- */
+const ChatArea = ({
+  messages,
+  inputValue,
+  onInputChange,
+  onSendMessage,
+  onFeedback,
+  showWelcome,
+  isLoading,
+}) => {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isLoading]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -133,11 +172,12 @@ const ChatArea = ({ messages, inputValue, onInputChange, onSendMessage, showWelc
         <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-6">
           {messages.map((msg) =>
             msg.type === 'bot' ? (
-              <BotMessage key={msg.id} message={msg} />
+              <BotMessage key={msg.id} message={msg} onFeedback={onFeedback} />
             ) : (
               <UserMessage key={msg.id} message={msg} />
             )
           )}
+          {isLoading && <TypingIndicator />}
           <div ref={messagesEndRef} />
         </div>
       )}
@@ -151,19 +191,25 @@ const ChatArea = ({ messages, inputValue, onInputChange, onSendMessage, showWelc
             onChange={(e) => onInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="What Guardian issue can I help with today?"
-            className="w-full rounded-xl py-3 pl-4 pr-14 text-sm text-[#333] placeholder-gray-400 outline-none border-2 border-transparent focus:border-[#6893ff] transition-colors"
+            disabled={isLoading}
+            className="w-full rounded-xl py-3 pl-4 pr-14 text-sm text-[#333] placeholder-gray-400 outline-none border-2 border-transparent focus:border-[#6893ff] transition-colors disabled:opacity-60"
             style={{
               backgroundColor: '#ffffff',
             }}
           />
           <button
             onClick={onSendMessage}
-            className="absolute right-2 w-[42px] h-[42px] rounded-xl flex items-center justify-center transition-all hover:opacity-90 active:scale-95"
+            disabled={isLoading || !inputValue.trim()}
+            className="absolute right-2 w-[42px] h-[42px] rounded-xl flex items-center justify-center transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
             style={{
               background: 'linear-gradient(180deg, #8080ff 0%, #00429d 100%)',
             }}
           >
-            <Send size={18} className="text-white" />
+            {isLoading ? (
+              <Loader2 size={18} className="text-white animate-spin" />
+            ) : (
+              <Send size={18} className="text-white" />
+            )}
           </button>
         </div>
       </div>
