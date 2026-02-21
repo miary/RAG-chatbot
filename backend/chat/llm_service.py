@@ -103,7 +103,8 @@ def generate_response(query: str, context_docs: list[dict]) -> str:
     prompt = build_rag_prompt(query, context_docs)
 
     try:
-        response = ollama.chat(
+        client = get_ollama_client()
+        response = client.chat(
             model=settings.OLLAMA_MODEL,
             messages=[
                 {
