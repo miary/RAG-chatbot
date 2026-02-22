@@ -1,7 +1,10 @@
 import React from 'react';
-import { Plus, MessageSquare } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, MessageSquare, BarChart2 } from 'lucide-react';
 
 const Sidebar = ({ chatHistory, agentStatus, onNewChat, onSelectChat, isOpen, onToggle }) => {
+  const navigate = useNavigate();
+  
   return (
     <>
       {/* Mobile overlay */}
@@ -57,6 +60,18 @@ const Sidebar = ({ chatHistory, agentStatus, onNewChat, onSelectChat, isOpen, on
               ))}
             </div>
           )}
+        </div>
+
+        {/* Dashboard Link */}
+        <div className="px-3 py-2 border-t border-[#2a3a5c]">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="w-full flex items-center gap-2 p-2.5 rounded-lg hover:bg-[#1c2e4c] transition-colors"
+            data-testid="dashboard-nav-btn"
+          >
+            <BarChart2 size={16} className="text-[#6893ff]" />
+            <span className="text-white text-xs font-medium">Analytics Dashboard</span>
+          </button>
         </div>
 
         {/* ADK Agent Status */}
