@@ -1,6 +1,9 @@
 # =============================================================================
 # PSPD Guardian — Backend Dockerfile
-# Django 5 + Gunicorn + Sentence Transformers + Qdrant Client + Ollama Client
+# Django 5 + Gunicorn + Qdrant Client + Ollama Client
+#
+# Embeddings are generated via remote Ollama (nomic-embed-text), so there is
+# no local ML model to cache — the image stays small and fast to build.
 # =============================================================================
 FROM python:3.11-slim AS base
 
@@ -26,19 +29,9 @@ COPY docker/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # ---------------------------------------------------------------------------
-# Stage 2 — Pre-download the embedding model so it's baked into the image
+# Stage 2 — Final runtime image
 # ---------------------------------------------------------------------------
-FROM deps AS model-cache
-
-RUN python -c "\
-from sentence_transformers import SentenceTransformer; \
-model = SentenceTransformer('all-MiniLM-L6-v2'); \
-print('Embedding model cached successfully')"
-
-# ---------------------------------------------------------------------------
-# Stage 3 — Final runtime image
-# ---------------------------------------------------------------------------
-FROM model-cache AS runtime
+FROM deps AS runtime
 
 # Copy application source
 COPY backend/ /app/
