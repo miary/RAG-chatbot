@@ -513,7 +513,7 @@ Each document's **payload** in Qdrant contains:
 | Field | Type | Description |
 |---|---|---|
 | `id` | `int` | Document identifier (1–12) |
-| `vector` | `float[384]` | all-MiniLM-L6-v2 embedding of the `content` field |
+| `vector` | `float[768]` | nomic-embed-text embedding of the `content` field |
 | `payload.title` | `string` | Incident title |
 | `payload.content` | `string` | Full incident description |
 | `payload.category` | `string` | One of 12 categories |
