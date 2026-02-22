@@ -1182,4 +1182,4 @@ curl http://localhost:8001/api/status/
 
 ---
 
-*PSPD Guardian — Built with Django 5, React 19, Ollama Llama 3.1, Qdrant, and PostgreSQL.*
+*PSPD Guardian — Built with Django 5.2, React 19, Ollama (Llama 3.1 + nomic-embed-text), Qdrant 1.17, and PostgreSQL.*
