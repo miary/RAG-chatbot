@@ -107,7 +107,7 @@ The "Clear Chat" button in the sub-header:
 
 | Technology | Version | Purpose |
 |---|---|---|
-| **Django** | 5.1.6 | Web framework (views, ORM, migrations) |
+| **Django** | 5.2 | Web framework (views, ORM, migrations) |
 | **Django REST Framework** | 3.16.1 | RESTful API serialization and views |
 | **django-cors-headers** | — | Cross-Origin Resource Sharing middleware |
 | **Gunicorn** | 25.1.0 | WSGI HTTP server (production-grade) |
