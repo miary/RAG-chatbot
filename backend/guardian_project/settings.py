@@ -89,6 +89,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Ollama configuration
 OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
 OLLAMA_MODEL = os.environ.get('OLLAMA_MODEL', 'llama3.1')
+OLLAMA_EMBED_MODEL = os.environ.get('OLLAMA_EMBED_MODEL', 'nomic-embed-text')
 
 # Qdrant configuration
 QDRANT_HOST = os.environ.get('QDRANT_HOST', 'localhost')
