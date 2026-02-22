@@ -192,7 +192,7 @@ The "Clear Chat" button in the sub-header:
         │               │  │                    │
         │ • ChatSession │  │ • guardian_incidents│
         │ • ChatMessage │  │   collection       │
-        │   (feedback,  │  │ • 384-d vectors    │
+        │   (feedback,  │  │ • 768-d vectors    │
         │    sources)   │  │ • Cosine distance  │
         └───────────────┘  └────────────────────┘
 
@@ -225,7 +225,7 @@ User types "How do I fix error API-503?"
     │
     ▼
 5. RAG Search:
-   a. Encode query with all-MiniLM-L6-v2 → 384-d vector
+   a. Encode query with Ollama nomic-embed-text → 768-d vector
    b. Qdrant query_points(collection="guardian_incidents", limit=3)
    c. Returns top-3 documents with cosine similarity scores
     │
