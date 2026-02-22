@@ -3,7 +3,7 @@
 # =============================================================================
 
 # Django Framework
-Django==5.1.6
+Django==5.2
 djangorestframework==3.16.1
 django-cors-headers==4.9.0
 gunicorn==25.1.0
@@ -15,10 +15,5 @@ psycopg2-binary==2.9.11
 # Vector Database
 qdrant-client==1.17.0
 
-# LLM
+# LLM + Embeddings (via Ollama)
 ollama==0.6.1
-
-# Embeddings
-sentence-transformers==5.2.3
-torch==2.10.0
-transformers==5.2.0
