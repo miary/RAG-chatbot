@@ -126,7 +126,7 @@ The "Clear Chat" button in the sub-header:
 | Technology | Version | Purpose |
 |---|---|---|
 | **PostgreSQL** | 15.16 | Primary relational database — stores sessions, messages, feedback |
-| **Qdrant** | 1.12.1 | Vector similarity search engine — stores document embeddings |
+| **Qdrant** | 1.17.0 | Vector similarity search engine — stores document embeddings |
 | **psycopg2-binary** | 2.9.11 | PostgreSQL adapter for Python |
 | **qdrant-client** | 1.17.0 | Python client for Qdrant REST + gRPC API |
 
