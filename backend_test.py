@@ -11,7 +11,7 @@ import sys
 from typing import Optional, Dict, Any
 
 # Backend URL from frontend environment
-BACKEND_URL = "https://responsive-chat-ui-4.preview.emergentagent.com/api"
+BACKEND_URL = "https://bot-analytics-1.preview.emergentagent.com/api"
 
 class APITester:
     def __init__(self):
