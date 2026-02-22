@@ -117,10 +117,9 @@ The "Clear Chat" button in the sub-header:
 
 | Technology | Version | Purpose |
 |---|---|---|
-| **Ollama** (Python Client) | 0.6.1 | LLM inference client — connects to local or remote Ollama server |
+| **Ollama** (Python Client) | 0.6.1 | LLM inference and embedding client — connects to local or remote Ollama server |
 | **Llama 3.1 8B** | `llama3.1:8b` | Large language model for response generation |
-| **Sentence Transformers** | 5.2.3 | Embedding model loading and inference |
-| **all-MiniLM-L6-v2** | — | 384-dimensional sentence embedding model for semantic search |
+| **nomic-embed-text** | Ollama-hosted | 768-dimensional embedding model for semantic search |
 
 ### 3.4 Databases
 
