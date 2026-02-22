@@ -222,3 +222,208 @@ def ingest_data(request):
             {'error': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+# ---------- Analytics ----------
+
+@api_view(['GET'])
+def analytics_usage(request):
+    """Return usage metrics for the analytics dashboard."""
+    now = timezone.now()
+    thirty_days_ago = now - timezone.timedelta(days=30)
+    seven_days_ago = now - timezone.timedelta(days=7)
+
+    # Total counts
+    total_sessions = ChatSession.objects.count()
+    total_messages = ChatMessage.objects.count()
+    total_user_messages = ChatMessage.objects.filter(message_type='user').count()
+    total_bot_messages = ChatMessage.objects.filter(message_type='bot').count()
+
+    # Feedback stats
+    feedback_up = ChatMessage.objects.filter(feedback='up').count()
+    feedback_down = ChatMessage.objects.filter(feedback='down').count()
+    feedback_none = ChatMessage.objects.filter(feedback='none', message_type='bot').count()
+
+    # Messages per day (last 30 days)
+    messages_per_day = (
+        ChatMessage.objects
+        .filter(timestamp__gte=thirty_days_ago)
+        .annotate(date=TruncDate('timestamp'))
+        .values('date')
+        .annotate(count=Count('id'))
+        .order_by('date')
+    )
+
+    # Sessions per day (last 30 days)
+    sessions_per_day = (
+        ChatSession.objects
+        .filter(created_at__gte=thirty_days_ago)
+        .annotate(date=TruncDate('created_at'))
+        .values('date')
+        .annotate(count=Count('id'))
+        .order_by('date')
+    )
+
+    # Messages per hour (last 7 days) - for hourly distribution
+    messages_per_hour = (
+        ChatMessage.objects
+        .filter(timestamp__gte=seven_days_ago)
+        .annotate(hour=TruncHour('timestamp'))
+        .values('hour')
+        .annotate(count=Count('id'))
+        .order_by('hour')
+    )
+
+    # Average messages per session
+    avg_msgs_per_session = 0
+    if total_sessions > 0:
+        avg_msgs_per_session = round(total_messages / total_sessions, 2)
+
+    return Response({
+        'summary': {
+            'total_sessions': total_sessions,
+            'total_messages': total_messages,
+            'total_user_messages': total_user_messages,
+            'total_bot_messages': total_bot_messages,
+            'avg_messages_per_session': avg_msgs_per_session,
+        },
+        'feedback': {
+            'helpful': feedback_up,
+            'not_helpful': feedback_down,
+            'no_feedback': feedback_none,
+        },
+        'messages_per_day': [
+            {'date': item['date'].isoformat(), 'count': item['count']}
+            for item in messages_per_day
+        ],
+        'sessions_per_day': [
+            {'date': item['date'].isoformat(), 'count': item['count']}
+            for item in sessions_per_day
+        ],
+        'messages_per_hour': [
+            {'hour': item['hour'].isoformat(), 'count': item['count']}
+            for item in messages_per_hour
+        ],
+    })
+
+
+@api_view(['GET'])
+def analytics_rag_performance(request):
+    """Return RAG performance metrics for the analytics dashboard."""
+    now = timezone.now()
+    thirty_days_ago = now - timezone.timedelta(days=30)
+    seven_days_ago = now - timezone.timedelta(days=7)
+
+    # Only bot messages have performance metrics
+    bot_msgs = ChatMessage.objects.filter(message_type='bot')
+    recent_bot_msgs = bot_msgs.filter(timestamp__gte=thirty_days_ago)
+
+    # Overall averages
+    overall_stats = bot_msgs.aggregate(
+        avg_rag_latency=Avg('rag_latency_ms'),
+        avg_llm_latency=Avg('llm_latency_ms'),
+        avg_total_latency=Avg('total_latency_ms'),
+        avg_rag_score=Avg('top_rag_score'),
+        max_rag_latency=Max('rag_latency_ms'),
+        max_llm_latency=Max('llm_latency_ms'),
+        max_total_latency=Max('total_latency_ms'),
+        min_rag_latency=Min('rag_latency_ms'),
+        min_llm_latency=Min('llm_latency_ms'),
+        min_total_latency=Min('total_latency_ms'),
+    )
+
+    # Performance over time (daily averages, last 30 days)
+    performance_per_day = (
+        recent_bot_msgs
+        .annotate(date=TruncDate('timestamp'))
+        .values('date')
+        .annotate(
+            avg_rag_latency=Avg('rag_latency_ms'),
+            avg_llm_latency=Avg('llm_latency_ms'),
+            avg_total_latency=Avg('total_latency_ms'),
+            avg_rag_score=Avg('top_rag_score'),
+            count=Count('id'),
+        )
+        .order_by('date')
+    )
+
+    # RAG score distribution
+    score_ranges = [
+        {'label': '0.0 - 0.2', 'min': 0.0, 'max': 0.2},
+        {'label': '0.2 - 0.4', 'min': 0.2, 'max': 0.4},
+        {'label': '0.4 - 0.6', 'min': 0.4, 'max': 0.6},
+        {'label': '0.6 - 0.8', 'min': 0.6, 'max': 0.8},
+        {'label': '0.8 - 1.0', 'min': 0.8, 'max': 1.0},
+    ]
+    score_distribution = []
+    for sr in score_ranges:
+        count = bot_msgs.filter(
+            top_rag_score__gte=sr['min'],
+            top_rag_score__lt=sr['max'] if sr['max'] < 1.0 else 1.01
+        ).count()
+        score_distribution.append({'range': sr['label'], 'count': count})
+
+    # Response time distribution
+    latency_ranges = [
+        {'label': '0-1s', 'min': 0, 'max': 1000},
+        {'label': '1-3s', 'min': 1000, 'max': 3000},
+        {'label': '3-5s', 'min': 3000, 'max': 5000},
+        {'label': '5-10s', 'min': 5000, 'max': 10000},
+        {'label': '10s+', 'min': 10000, 'max': 999999},
+    ]
+    latency_distribution = []
+    for lr in latency_ranges:
+        count = bot_msgs.filter(
+            total_latency_ms__gte=lr['min'],
+            total_latency_ms__lt=lr['max']
+        ).count()
+        latency_distribution.append({'range': lr['label'], 'count': count})
+
+    # Recent responses (last 10) for detailed view
+    recent_responses = (
+        bot_msgs
+        .order_by('-timestamp')[:10]
+        .values(
+            'id', 'timestamp', 'rag_latency_ms', 'llm_latency_ms',
+            'total_latency_ms', 'top_rag_score'
+        )
+    )
+
+    return Response({
+        'summary': {
+            'avg_rag_latency_ms': round(overall_stats['avg_rag_latency'] or 0, 2),
+            'avg_llm_latency_ms': round(overall_stats['avg_llm_latency'] or 0, 2),
+            'avg_total_latency_ms': round(overall_stats['avg_total_latency'] or 0, 2),
+            'avg_rag_score': round(overall_stats['avg_rag_score'] or 0, 4),
+            'max_rag_latency_ms': overall_stats['max_rag_latency'] or 0,
+            'max_llm_latency_ms': overall_stats['max_llm_latency'] or 0,
+            'max_total_latency_ms': overall_stats['max_total_latency'] or 0,
+            'min_rag_latency_ms': overall_stats['min_rag_latency'] or 0,
+            'min_llm_latency_ms': overall_stats['min_llm_latency'] or 0,
+            'min_total_latency_ms': overall_stats['min_total_latency'] or 0,
+        },
+        'performance_per_day': [
+            {
+                'date': item['date'].isoformat(),
+                'avg_rag_latency': round(item['avg_rag_latency'] or 0, 2),
+                'avg_llm_latency': round(item['avg_llm_latency'] or 0, 2),
+                'avg_total_latency': round(item['avg_total_latency'] or 0, 2),
+                'avg_rag_score': round(item['avg_rag_score'] or 0, 4),
+                'count': item['count'],
+            }
+            for item in performance_per_day
+        ],
+        'score_distribution': score_distribution,
+        'latency_distribution': latency_distribution,
+        'recent_responses': [
+            {
+                'id': str(item['id']),
+                'timestamp': item['timestamp'].isoformat(),
+                'rag_latency_ms': item['rag_latency_ms'],
+                'llm_latency_ms': item['llm_latency_ms'],
+                'total_latency_ms': item['total_latency_ms'],
+                'top_rag_score': round(item['top_rag_score'], 4),
+            }
+            for item in recent_responses
+        ],
+    })
