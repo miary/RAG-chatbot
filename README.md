@@ -286,23 +286,23 @@ The backend follows a **layered service architecture**:
 
 ### 5.3 Lazy-Loaded Singletons
 
-Both the embedding model and database clients use a **lazy-loading singleton pattern** to avoid cold-start penalties on every request:
+Both the Ollama clients and the Qdrant client use a **lazy-loading singleton pattern** to avoid cold-start penalties on every request:
 
 ```python
 # rag_service.py
-_embedder = None     # SentenceTransformer('all-MiniLM-L6-v2')
-_qdrant_client = None  # QdrantClient(host, port)
+_ollama_embed_client = None   # ollama.Client for nomic-embed-text
+_qdrant_client = None         # QdrantClient(host, port)
 
-def get_embedder():
-    global _embedder
-    if _embedder is None:
-        _embedder = SentenceTransformer('all-MiniLM-L6-v2')
-    return _embedder
+def get_ollama_embed_client():
+    global _ollama_embed_client
+    if _ollama_embed_client is None:
+        _ollama_embed_client = Client(host=settings.OLLAMA_BASE_URL)
+    return _ollama_embed_client
 ```
 
 ```python
 # llm_service.py
-_ollama_client = None  # ollama.Client(host=OLLAMA_BASE_URL)
+_ollama_client = None  # ollama.Client for llama3.1:8b
 
 def get_ollama_client():
     global _ollama_client
@@ -311,7 +311,7 @@ def get_ollama_client():
     return _ollama_client
 ```
 
-This means the first request incurs a ~2-3 second delay to load the embedding model into memory, but all subsequent requests reuse the cached instance.
+This means the first request incurs a small delay to establish the connection, but all subsequent requests reuse the cached client instances.
 
 ### 5.4 RAG Prompt Engineering
 
