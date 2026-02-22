@@ -466,7 +466,7 @@ mock_data.py (12 documents)
 ingest_documents()
     │
     ├── Extract 'content' field from each document
-    ├── Batch-encode all texts with all-MiniLM-L6-v2
+    ├── Batch-encode all texts via Ollama nomic-embed-text (768-d)
     ├── Create PointStruct(id, vector, payload) for each
     └── Upsert into Qdrant collection "guardian_incidents"
 ```
