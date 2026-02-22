@@ -1039,7 +1039,7 @@ REACT_APP_BACKEND_URL=http://localhost:8080   # Set to public domain in prod
 | Service | Port | Start Command |
 |---|---|---|
 | PostgreSQL 15 | 5432 | `pg_ctlcluster 15 main start` |
-| Qdrant 1.12.1 | 6333 | `qdrant --config-path /etc/qdrant/config.yaml` |
+| Qdrant 1.17.0 | 6333 | `qdrant --config-path /etc/qdrant/config.yaml` |
 | Ollama (remote) | 11434 | Running at `http://31.220.21.156:11434` |
 
 ### First-Time Setup Sequence
