@@ -904,7 +904,7 @@ docker compose logs -f backend
 | Service | Image | Container Name | Internal Port | External Port | Health Check |
 |---|---|---|---|---|---|
 | `postgres` | `postgres:15-alpine` | `guardian-postgres` | 5432 | 5432 | `pg_isready` |
-| `qdrant` | `qdrant/qdrant:v1.12.1` | `guardian-qdrant` | 6333, 6334 | 6333 | `curl /healthz` |
+| `qdrant` | `qdrant/qdrant:v1.17.0` | `guardian-qdrant` | 6333, 6334 | 6333 | `curl /healthz` |
 | `backend` | Custom (Python 3.11) | `guardian-backend` | 8001 | 8001 | `curl /api/` |
 | `frontend` | Custom (Nginx 1.27) | `guardian-frontend` | 3000 | 3000 | `curl /` |
 | `nginx` | `nginx:1.27-alpine` | `guardian-proxy` | 80 | 8080 | — |
