@@ -306,6 +306,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<ChatApp />} />
+          <Route path="/dashboard" element={<Dashboard />} />
         </Routes>
       </BrowserRouter>
     </div>
