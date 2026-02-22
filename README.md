@@ -799,7 +799,8 @@ Each document contains a detailed natural-language description (100–300 words)
 | `PG_DB_HOST` | `localhost` | PostgreSQL host |
 | `PG_DB_PORT` | `5432` | PostgreSQL port |
 | `OLLAMA_BASE_URL` | `http://31.220.21.156:11434` | Ollama API server URL (local or remote) |
-| `OLLAMA_MODEL` | `llama3.1:8b` | Ollama model identifier |
+| `OLLAMA_MODEL` | `llama3.1:8b` | Ollama model identifier for chat/generation |
+| `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Ollama model identifier for embeddings |
 | `QDRANT_HOST` | `localhost` | Qdrant server host |
 | `QDRANT_PORT` | `6333` | Qdrant HTTP API port |
 | `QDRANT_COLLECTION` | `guardian_incidents` | Qdrant collection name for document vectors |
