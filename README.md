@@ -1075,7 +1075,7 @@ curl http://localhost:8001/api/status/
 
 | Metric | Value | Notes |
 |---|---|---|
-| **Embedding Latency** | ~5 ms | Per query, CPU inference with all-MiniLM-L6-v2 |
+| **Embedding Latency** | ~10–50 ms | Per query, remote Ollama nomic-embed-text (includes network round-trip) |
 | **Qdrant Search Latency** | ~2 ms | Cosine similarity over 12 documents (sub-linear at scale) |
 | **Ollama LLM Latency** | 30–60 s | Cold start ~38s (model loading), warm ~10–15s per response |
 | **Total Chat Response Time** | 10–65 s | Dominated by LLM inference time |
