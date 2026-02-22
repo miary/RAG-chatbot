@@ -176,7 +176,8 @@ The "Clear Chat" button in the sub-header:
               │             │                      │
               │  ┌──────────▼──────────────────┐  │
               │  │      RAG Pipeline            │  │
-              │  │  1. Encode query → 384-d vec │  │
+              │  │  1. Encode query → 768-d vec │  │
+              │  │     (Ollama nomic-embed-text) │  │
               │  │  2. Qdrant cosine search     │  │
               │  │  3. Build RAG prompt         │  │
               │  │  4. Ollama LLM generation    │  │
