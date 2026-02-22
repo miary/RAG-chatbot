@@ -430,12 +430,12 @@ When a user sends a message:
 
 | Property | Value |
 |---|---|
-| Model | `all-MiniLM-L6-v2` (Sentence Transformers) |
-| Dimensions | 384 |
-| Max Sequence Length | 256 tokens |
-| Architecture | 6-layer MiniLM (distilled from BERT) |
-| Size | ~80 MB |
-| Inference Speed | ~5ms per query on CPU |
+| Model | `nomic-embed-text` (hosted on Ollama) |
+| Dimensions | 768 |
+| Max Sequence Length | 8192 tokens |
+| Architecture | Nomic AI's text embedding model with Matryoshka representation |
+| Hosting | Remote Ollama server (same as LLM — no local model download required) |
+| Inference Speed | ~10–50ms per query (network round-trip to Ollama) |
 
 ### 7.2 Vector Database Configuration
 
