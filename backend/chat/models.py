@@ -42,6 +42,10 @@ class ChatMessage(models.Model):
         default='none',
     )
     sources = models.JSONField(default=list, blank=True)
+    rag_latency_ms = models.IntegerField(default=0, help_text='RAG search time in milliseconds')
+    llm_latency_ms = models.IntegerField(default=0, help_text='LLM generation time in milliseconds')
+    total_latency_ms = models.IntegerField(default=0, help_text='Total response time in milliseconds')
+    top_rag_score = models.FloatField(default=0.0, help_text='Highest RAG similarity score for this response')
 
     class Meta:
         ordering = ['timestamp']
