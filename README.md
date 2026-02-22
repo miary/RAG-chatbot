@@ -441,9 +441,9 @@ When a user sends a message:
 
 | Property | Value |
 |---|---|
-| Engine | Qdrant v1.12.1 |
+| Engine | Qdrant v1.17.0 |
 | Collection Name | `guardian_incidents` |
-| Vector Size | 384 |
+| Vector Size | 768 |
 | Distance Metric | Cosine Similarity |
 | Documents Stored | 12 |
 | Storage Path | `/var/lib/qdrant/storage` |
