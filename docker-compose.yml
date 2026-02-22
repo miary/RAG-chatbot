@@ -48,7 +48,7 @@ services:
   # Qdrant 1.12.1 — Vector Similarity Search Engine
   # -------------------------------------------------------------------------
   qdrant:
-    image: qdrant/qdrant:v1.12.1
+    image: qdrant/qdrant:v1.17.0
     container_name: guardian-qdrant
     restart: unless-stopped
     ports:
