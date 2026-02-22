@@ -6,6 +6,7 @@ import Sidebar from "./components/Sidebar";
 import TopHeader from "./components/TopHeader";
 import SubHeader from "./components/SubHeader";
 import ChatArea from "./components/ChatArea";
+import Dashboard from "./components/Dashboard";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
