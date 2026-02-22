@@ -137,17 +137,24 @@ def send_message(request):
         text=user_text,
     )
 
-    # RAG: retrieve similar documents
+    # RAG: retrieve similar documents (with timing)
+    t_start = time.time()
     try:
         context_docs = search_similar(user_text, top_k=3)
     except Exception as e:
         logger.error('RAG search failed: %s', e)
         context_docs = []
+    rag_ms = int((time.time() - t_start) * 1000)
 
-    # LLM: generate response
+    # LLM: generate response (with timing)
+    t_llm = time.time()
     bot_text = generate_response(user_text, context_docs)
+    llm_ms = int((time.time() - t_llm) * 1000)
+    total_ms = rag_ms + llm_ms
 
-    # Save bot message with sources
+    top_score = max((d.get('score', 0) for d in context_docs), default=0.0)
+
+    # Save bot message with sources and timing
     sources = [
         {'title': d.get('title', ''), 'score': round(d.get('score', 0), 3)}
         for d in context_docs
@@ -157,6 +164,10 @@ def send_message(request):
         message_type='bot',
         text=bot_text,
         sources=sources,
+        rag_latency_ms=rag_ms,
+        llm_latency_ms=llm_ms,
+        total_latency_ms=total_ms,
+        top_rag_score=round(top_score, 4),
     )
 
     # Update session title if it was auto-generated
