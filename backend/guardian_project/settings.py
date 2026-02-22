@@ -58,12 +58,8 @@ WSGI_APPLICATION = 'guardian_project.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('PG_DB_NAME', 'guardian_db'),
-        'USER': os.environ.get('PG_DB_USER', 'guardian_user'),
-        'PASSWORD': os.environ.get('PG_DB_PASSWORD', 'guardian_pass'),
-        'HOST': os.environ.get('PG_DB_HOST', 'localhost'),
-        'PORT': os.environ.get('PG_DB_PORT', '5432'),
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
