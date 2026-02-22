@@ -981,9 +981,10 @@ PG_DB_NAME=guardian_db
 PG_DB_USER=guardian_user
 PG_DB_PASSWORD=guardian_pass          # CHANGE IN PRODUCTION
 
-# ---- Ollama (Remote LLM) ----
+# ---- Ollama (Remote LLM + Embeddings) ----
 OLLAMA_BASE_URL=http://31.220.21.156:11434
 OLLAMA_MODEL=llama3.1:8b
+OLLAMA_EMBED_MODEL=nomic-embed-text
 
 # ---- Django ----
 DJANGO_SECRET_KEY=change-me-use-long-random-string  # CHANGE IN PRODUCTION
