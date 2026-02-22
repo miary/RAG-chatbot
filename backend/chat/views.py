@@ -312,7 +312,6 @@ def analytics_rag_performance(request):
     """Return RAG performance metrics for the analytics dashboard."""
     now = timezone.now()
     thirty_days_ago = now - timezone.timedelta(days=30)
-    seven_days_ago = now - timezone.timedelta(days=7)
 
     # Only bot messages have performance metrics
     bot_msgs = ChatMessage.objects.filter(message_type='bot')
