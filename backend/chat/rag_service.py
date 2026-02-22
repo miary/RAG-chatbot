@@ -2,28 +2,51 @@ import logging
 from typing import List
 
 from django.conf import settings
+from ollama import Client
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
     PointStruct,
     VectorParams,
 )
-from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
 # Global instances (lazy loaded)
-_embedder = None
+_ollama_embed_client = None
 _qdrant_client = None
 
+# nomic-embed-text produces 768-dimensional vectors
+EMBEDDING_DIM = 768
 
-def get_embedder():
-    global _embedder
-    if _embedder is None:
-        logger.info('Loading sentence-transformers model...')
-        _embedder = SentenceTransformer('all-MiniLM-L6-v2')
-        logger.info('Embedding model loaded.')
-    return _embedder
+
+def get_ollama_embed_client():
+    """Return a shared Ollama client for embedding requests."""
+    global _ollama_embed_client
+    if _ollama_embed_client is None:
+        _ollama_embed_client = Client(host=settings.OLLAMA_BASE_URL)
+        logger.info(
+            'Ollama embedding client configured for %s (model: %s)',
+            settings.OLLAMA_BASE_URL,
+            settings.OLLAMA_EMBED_MODEL,
+        )
+    return _ollama_embed_client
+
+
+def embed_texts(texts: list[str]) -> list[list[float]]:
+    """Embed a list of texts using Ollama nomic-embed-text."""
+    client = get_ollama_embed_client()
+    response = client.embed(
+        model=settings.OLLAMA_EMBED_MODEL,
+        input=texts,
+    )
+    return response['embeddings']
+
+
+def embed_query(query: str) -> list[float]:
+    """Embed a single query string."""
+    vectors = embed_texts([query])
+    return vectors[0]
 
 
 def get_qdrant():
@@ -39,21 +62,40 @@ def get_qdrant():
 
 
 def ensure_collection():
-    """Create the Qdrant collection if it doesn't already exist."""
+    """Create the Qdrant collection if it doesn't already exist.
+
+    If an existing collection has the wrong vector size (e.g. 384 from a
+    previous embedding model), it is deleted and recreated with the
+    correct dimensions for nomic-embed-text (768).
+    """
     client = get_qdrant()
     collection_name = settings.QDRANT_COLLECTION
     collections = [c.name for c in client.get_collections().collections]
-    if collection_name not in collections:
-        client.create_collection(
-            collection_name=collection_name,
-            vectors_config=VectorParams(
-                size=384,  # all-MiniLM-L6-v2 output dimension
-                distance=Distance.COSINE,
-            ),
-        )
-        logger.info('Created Qdrant collection: %s', collection_name)
-    else:
-        logger.info('Qdrant collection "%s" already exists.', collection_name)
+
+    if collection_name in collections:
+        # Verify the vector size matches
+        info = client.get_collection(collection_name)
+        existing_size = info.config.params.vectors.size
+        if existing_size != EMBEDDING_DIM:
+            logger.warning(
+                'Collection "%s" has vector size %d, expected %d. Recreating...',
+                collection_name,
+                existing_size,
+                EMBEDDING_DIM,
+            )
+            client.delete_collection(collection_name)
+        else:
+            logger.info('Qdrant collection "%s" already exists with correct dimensions.', collection_name)
+            return
+
+    client.create_collection(
+        collection_name=collection_name,
+        vectors_config=VectorParams(
+            size=EMBEDDING_DIM,  # nomic-embed-text output dimension
+            distance=Distance.COSINE,
+        ),
+    )
+    logger.info('Created Qdrant collection: %s (dim=%d)', collection_name, EMBEDDING_DIM)
 
 
 def ingest_documents(documents: list[dict]):
@@ -65,12 +107,11 @@ def ingest_documents(documents: list[dict]):
       - content: str  (the text that will be embedded)
       - metadata: dict (extra payload stored alongside)
     """
-    embedder = get_embedder()
     client = get_qdrant()
     collection_name = settings.QDRANT_COLLECTION
 
     texts = [d['content'] for d in documents]
-    embeddings = embedder.encode(texts).tolist()
+    embeddings = embed_texts(texts)
 
     points = [
         PointStruct(
@@ -91,11 +132,10 @@ def ingest_documents(documents: list[dict]):
 
 def search_similar(query: str, top_k: int = 3) -> List[dict]:
     """Return the top_k most relevant documents for the given query."""
-    embedder = get_embedder()
     client = get_qdrant()
     collection_name = settings.QDRANT_COLLECTION
 
-    query_vector = embedder.encode(query).tolist()
+    query_vector = embed_query(query)
 
     results = client.query_points(
         collection_name=collection_name,
