@@ -31,7 +31,7 @@ The application presents a dark-themed, responsive chat interface — faithfully
 
 | Capability | Description |
 |---|---|
-| **Semantic Search** | Cosine-similarity search over 384-dimensional sentence embeddings stored in Qdrant |
+| **Semantic Search** | Cosine-similarity search over 768-dimensional embeddings (nomic-embed-text) stored in Qdrant |
 | **LLM Response Generation** | Ollama-hosted Llama 3.1 (8B) with system-prompt engineering and RAG context injection |
 | **Multi-Turn Conversations** | Persistent sessions stored in PostgreSQL, enabling follow-up questions within the same context |
 | **Feedback Collection** | Thumbs-up / thumbs-down per bot message, stored in the database for quality monitoring |
