@@ -38,12 +38,18 @@ Build a responsive, mobile-friendly chatbot interface based on Axure prototypes,
 - Two-tab dashboard: Usage Metrics & RAG Performance
 - Summary statistics cards
 - Time-series charts (messages, latencies)
-- Distribution visualizations (feedback, scores, latency buckets)
+- Distribution visualizations (ratings, scores, latency buckets)
 
 ### Phase 6: Remote Qdrant Configuration (COMPLETED - March 23, 2026)
 - Changed from local Qdrant to remote instance at 148.230.92.74:6333
 - Updated docker-compose.yml (removed local qdrant service)
 - Updated environment variables and documentation
+
+### Phase 7: 5-Star Rating System (COMPLETED - March 23, 2026)
+- Replaced thumbs up/down feedback with 5-star rating (1-5)
+- Database migration: removed `feedback` field, added `rating` IntegerField
+- Updated analytics to show rating distribution and average rating
+- Interactive star rating UI with hover effects
 
 ## Architecture
 
@@ -63,9 +69,9 @@ Frontend (React 19) → Nginx Proxy → Django 5.2 Backend
 - `GET/DELETE /api/sessions/<id>/` - Session detail/delete
 - `DELETE /api/sessions/<id>/clear/` - Clear messages
 - `POST /api/chat/` - Send message (RAG + LLM)
-- `PATCH /api/messages/<id>/feedback/` - Update feedback
+- `PATCH /api/messages/<id>/feedback/` - Update rating (1-5 stars)
 - `POST /api/ingest/` - Ingest documents
-- `GET /api/analytics/usage/` - Usage analytics
+- `GET /api/analytics/usage/` - Usage analytics with rating distribution
 - `GET /api/analytics/rag/` - RAG performance analytics
 
 ## Key Technical Details
@@ -73,6 +79,11 @@ Frontend (React 19) → Nginx Proxy → Django 5.2 Backend
 - **LLM Model**: llama3.1:8b
 - **Vector DB**: Qdrant (remote at 148.230.92.74:6333)
 - **Knowledge Base**: 12 Guardian incident documents
+- **Rating System**: 5-star scale (1-5), stored as IntegerField
+
+## Database Schema
+- `chat_chatsession`: id (uuid), title, created_at, updated_at
+- `chat_chatmessage`: id (uuid), session (fk), message_type, text, timestamp, rating (int 1-5, nullable), sources (json), rag_latency_ms, llm_latency_ms, total_latency_ms, top_rag_score
 
 ## Status: COMPLETED
 All phases implemented and tested. Application is production-ready.

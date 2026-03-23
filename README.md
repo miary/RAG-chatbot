@@ -52,12 +52,14 @@ The application presents a dark-themed, responsive chat interface — faithfully
 - **Typing Indicator**: An animated spinner with "Searching Guardian incidents..." text appears while the RAG + LLM pipeline is processing.
 - **Markdown-Like Rendering**: Bot responses render `**bold text**` as `<strong>` elements and preserve line breaks.
 
-### 2.2 Feedback System
+### 2.2 5-Star Rating System
 
-Each bot response includes a "Was this helpful?" section with:
-- **Thumbs Up** button — highlights in blue (`#6893ff`) when selected
-- **Thumbs Down** button — highlights in red when selected
-- Feedback is persisted to PostgreSQL via a PATCH API call and can be used for response quality analytics.
+Each bot response includes a rating section with:
+- **5 Interactive Stars** — Users can rate responses from 1 to 5 stars
+- Stars highlight in yellow when selected or hovered
+- Current rating is displayed as "(X/5)" next to the stars
+- Ratings are persisted to PostgreSQL via a PATCH API call
+- Rating data is aggregated in the analytics dashboard
 
 ### 2.3 Chat History Sidebar
 
@@ -84,9 +86,9 @@ The "Clear Chat" button in the sub-header:
 Accessible via the bar chart icon in the top header or by navigating to `/dashboard`. The dashboard provides two tabs:
 
 **Usage Metrics Tab:**
-- **Summary Cards**: Total sessions, total messages (user/bot breakdown), average messages per session
+- **Summary Cards**: Total sessions, total messages (user/bot breakdown), average messages per session, average rating
 - **Messages Over Time**: Bar chart showing daily user and bot message counts
-- **Feedback Distribution**: Pie chart showing thumbs up, thumbs down, and no-feedback percentages
+- **User Ratings Distribution**: Horizontal bar chart showing 5-star rating breakdown (5 stars to 1 star)
 
 **RAG Performance Tab:**
 - **Summary Cards**: Total responses, average RAG latency, average LLM latency, average RAG similarity score
