@@ -3,13 +3,13 @@
 #
 # Services:
 #   1. postgres     — PostgreSQL 15 (relational database)
-#   2. qdrant       — Qdrant 1.12.1 (vector similarity search)
-#   3. backend      — Django 5 + Gunicorn + RAG pipeline
-#   4. frontend     — React 19 built assets served by Nginx
-#   5. nginx        — Reverse proxy (unified entry point)
+#   2. backend      — Django 5 + Gunicorn + RAG pipeline
+#   3. frontend     — React 19 built assets served by Nginx
+#   4. nginx        — Reverse proxy (unified entry point)
 #
-# External dependency (not containerized):
+# External dependencies (not containerized):
 #   - Ollama LLM server at OLLAMA_BASE_URL (default: http://31.220.21.156:11434)
+#   - Qdrant vector DB at QDRANT_HOST:QDRANT_PORT (default: 148.230.92.74:6333)
 #
 # Usage:
 #   docker compose up -d --build
@@ -45,27 +45,6 @@ services:
       - guardian-net
 
   # -------------------------------------------------------------------------
-  # Qdrant 1.12.1 — Vector Similarity Search Engine
-  # -------------------------------------------------------------------------
-  qdrant:
-    image: qdrant/qdrant:v1.17.0
-    container_name: guardian-qdrant
-    restart: unless-stopped
-    ports:
-      - "${QDRANT_EXTERNAL_PORT:-6333}:6333"
-      - "6334:6334"
-    volumes:
-      - qdrant_data:/qdrant/storage
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    networks:
-      - guardian-net
-
-  # -------------------------------------------------------------------------
   # Backend — Django 5 + Gunicorn + RAG Pipeline
   # -------------------------------------------------------------------------
   backend:
@@ -76,8 +55,6 @@ services:
     restart: unless-stopped
     depends_on:
       postgres:
-        condition: service_healthy
-      qdrant:
         condition: service_healthy
     environment:
       # Django
@@ -91,9 +68,9 @@ services:
       PG_DB_HOST: postgres
       PG_DB_PORT: "5432"
 
-      # Qdrant (service name = hostname inside Docker network)
-      QDRANT_HOST: qdrant
-      QDRANT_PORT: "6333"
+      # Qdrant (remote server)
+      QDRANT_HOST: ${QDRANT_HOST:-148.230.92.74}
+      QDRANT_PORT: ${QDRANT_PORT:-6333}
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-guardian_incidents}
 
       # Ollama (remote server)
@@ -149,8 +126,6 @@ services:
 # =============================================================================
 volumes:
   postgres_data:
-    driver: local
-  qdrant_data:
     driver: local
 
 # =============================================================================

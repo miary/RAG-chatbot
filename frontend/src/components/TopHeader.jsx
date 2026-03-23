@@ -1,5 +1,6 @@
 import React from 'react';
-import { Settings, User, Menu } from 'lucide-react';
+import { Settings, User, Menu, BarChart3 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const TopHeader = ({ onToggleSidebar }) => {
   return (
@@ -42,6 +43,14 @@ const TopHeader = ({ onToggleSidebar }) => {
       </div>
 
       <div className="flex items-center gap-3">
+        <Link 
+          to="/dashboard" 
+          className="text-white/80 hover:text-white transition-colors"
+          title="Analytics Dashboard"
+          data-testid="dashboard-link"
+        >
+          <BarChart3 size={22} />
+        </Link>
         <button className="text-white/80 hover:text-white transition-colors">
           <Settings size={22} />
         </button>

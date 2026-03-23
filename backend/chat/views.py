@@ -222,3 +222,196 @@ def ingest_data(request):
             {'error': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+# ---------- Analytics ----------
+
+@api_view(['GET'])
+def usage_analytics(request):
+    """Return usage analytics for the dashboard.
+    
+    Provides:
+    - Total messages (user + bot)
+    - Total sessions
+    - Average messages per session
+    - Message counts over time (daily)
+    - Feedback distribution
+    """
+    from datetime import timedelta
+    
+    # Time range: last 30 days
+    end_date = timezone.now()
+    start_date = end_date - timedelta(days=30)
+    
+    # Total counts
+    total_sessions = ChatSession.objects.count()
+    total_messages = ChatMessage.objects.count()
+    total_user_messages = ChatMessage.objects.filter(message_type='user').count()
+    total_bot_messages = ChatMessage.objects.filter(message_type='bot').count()
+    
+    # Average messages per session
+    avg_messages_per_session = round(total_messages / total_sessions, 2) if total_sessions > 0 else 0
+    
+    # Messages over time (daily for last 30 days)
+    messages_by_day = (
+        ChatMessage.objects
+        .filter(timestamp__gte=start_date)
+        .annotate(date=TruncDate('timestamp'))
+        .values('date')
+        .annotate(
+            user_count=Count('id', filter=Q(message_type='user')),
+            bot_count=Count('id', filter=Q(message_type='bot')),
+            total=Count('id'),
+        )
+        .order_by('date')
+    )
+    
+    # Feedback distribution (only for bot messages)
+    feedback_dist = (
+        ChatMessage.objects
+        .filter(message_type='bot')
+        .values('feedback')
+        .annotate(count=Count('id'))
+    )
+    feedback_summary = {item['feedback']: item['count'] for item in feedback_dist}
+    
+    # Sessions created over time (daily for last 30 days)
+    sessions_by_day = (
+        ChatSession.objects
+        .filter(created_at__gte=start_date)
+        .annotate(date=TruncDate('created_at'))
+        .values('date')
+        .annotate(count=Count('id'))
+        .order_by('date')
+    )
+    
+    return Response({
+        'summary': {
+            'total_sessions': total_sessions,
+            'total_messages': total_messages,
+            'total_user_messages': total_user_messages,
+            'total_bot_messages': total_bot_messages,
+            'avg_messages_per_session': avg_messages_per_session,
+        },
+        'messages_over_time': [
+            {
+                'date': item['date'].isoformat() if item['date'] else None,
+                'user_count': item['user_count'],
+                'bot_count': item['bot_count'],
+                'total': item['total'],
+            }
+            for item in messages_by_day
+        ],
+        'sessions_over_time': [
+            {
+                'date': item['date'].isoformat() if item['date'] else None,
+                'count': item['count'],
+            }
+            for item in sessions_by_day
+        ],
+        'feedback_distribution': {
+            'thumbs_up': feedback_summary.get('up', 0),
+            'thumbs_down': feedback_summary.get('down', 0),
+            'no_feedback': feedback_summary.get('none', 0),
+        },
+    })
+
+
+@api_view(['GET'])
+def rag_performance_analytics(request):
+    """Return RAG performance analytics for the dashboard.
+    
+    Provides:
+    - Average RAG latency
+    - Average LLM latency
+    - Average total latency
+    - Average RAG similarity score
+    - Latency distribution over time
+    - Score distribution
+    """
+    from datetime import timedelta
+    
+    # Only analyze bot messages (they have the performance metrics)
+    bot_messages = ChatMessage.objects.filter(message_type='bot')
+    
+    # Overall statistics
+    stats = bot_messages.aggregate(
+        avg_rag_latency=Avg('rag_latency_ms'),
+        avg_llm_latency=Avg('llm_latency_ms'),
+        avg_total_latency=Avg('total_latency_ms'),
+        avg_rag_score=Avg('top_rag_score'),
+        max_rag_latency=Max('rag_latency_ms'),
+        max_llm_latency=Max('llm_latency_ms'),
+        max_total_latency=Max('total_latency_ms'),
+        min_rag_latency=Min('rag_latency_ms'),
+        min_llm_latency=Min('llm_latency_ms'),
+        min_total_latency=Min('total_latency_ms'),
+        max_rag_score=Max('top_rag_score'),
+        min_rag_score=Min('top_rag_score'),
+        total_responses=Count('id'),
+    )
+    
+    # Time range: last 30 days
+    end_date = timezone.now()
+    start_date = end_date - timedelta(days=30)
+    
+    # Latency over time (daily averages)
+    latency_by_day = (
+        bot_messages
+        .filter(timestamp__gte=start_date)
+        .annotate(date=TruncDate('timestamp'))
+        .values('date')
+        .annotate(
+            avg_rag=Avg('rag_latency_ms'),
+            avg_llm=Avg('llm_latency_ms'),
+            avg_total=Avg('total_latency_ms'),
+            avg_score=Avg('top_rag_score'),
+            count=Count('id'),
+        )
+        .order_by('date')
+    )
+    
+    # Score distribution (buckets)
+    score_buckets = {
+        'excellent': bot_messages.filter(top_rag_score__gte=0.7).count(),
+        'good': bot_messages.filter(top_rag_score__gte=0.5, top_rag_score__lt=0.7).count(),
+        'fair': bot_messages.filter(top_rag_score__gte=0.3, top_rag_score__lt=0.5).count(),
+        'poor': bot_messages.filter(top_rag_score__lt=0.3).count(),
+    }
+    
+    # Latency distribution (buckets in ms)
+    latency_buckets = {
+        'fast': bot_messages.filter(total_latency_ms__lt=5000).count(),       # < 5s
+        'normal': bot_messages.filter(total_latency_ms__gte=5000, total_latency_ms__lt=30000).count(),  # 5-30s
+        'slow': bot_messages.filter(total_latency_ms__gte=30000, total_latency_ms__lt=60000).count(),   # 30-60s
+        'very_slow': bot_messages.filter(total_latency_ms__gte=60000).count(),  # > 60s
+    }
+    
+    return Response({
+        'summary': {
+            'total_responses': stats['total_responses'] or 0,
+            'avg_rag_latency_ms': round(stats['avg_rag_latency'] or 0, 2),
+            'avg_llm_latency_ms': round(stats['avg_llm_latency'] or 0, 2),
+            'avg_total_latency_ms': round(stats['avg_total_latency'] or 0, 2),
+            'avg_rag_score': round(stats['avg_rag_score'] or 0, 4),
+            'max_rag_latency_ms': stats['max_rag_latency'] or 0,
+            'max_llm_latency_ms': stats['max_llm_latency'] or 0,
+            'min_rag_latency_ms': stats['min_rag_latency'] or 0,
+            'min_llm_latency_ms': stats['min_llm_latency'] or 0,
+            'max_rag_score': round(stats['max_rag_score'] or 0, 4),
+            'min_rag_score': round(stats['min_rag_score'] or 0, 4),
+        },
+        'latency_over_time': [
+            {
+                'date': item['date'].isoformat() if item['date'] else None,
+                'avg_rag_ms': round(item['avg_rag'] or 0, 2),
+                'avg_llm_ms': round(item['avg_llm'] or 0, 2),
+                'avg_total_ms': round(item['avg_total'] or 0, 2),
+                'avg_score': round(item['avg_score'] or 0, 4),
+                'count': item['count'],
+            }
+            for item in latency_by_day
+        ],
+        'score_distribution': score_buckets,
+        'latency_distribution': latency_buckets,
+    })

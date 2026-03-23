@@ -19,4 +19,8 @@ urlpatterns = [
 
     # Admin / Ingest
     path('ingest/', views.ingest_data, name='ingest-data'),
+
+    # Analytics
+    path('analytics/usage/', views.usage_analytics, name='usage-analytics'),
+    path('analytics/rag/', views.rag_performance_analytics, name='rag-analytics'),
 ]

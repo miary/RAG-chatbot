@@ -126,7 +126,7 @@ The "Clear Chat" button in the sub-header:
 | Technology | Version | Purpose |
 |---|---|---|
 | **PostgreSQL** | 15.16 | Primary relational database — stores sessions, messages, feedback |
-| **Qdrant** | 1.17.0 | Vector similarity search engine — stores document embeddings |
+| **Qdrant** | 1.17.0+ (Remote) | Vector similarity search engine — remote instance at `148.230.92.74:6333` |
 | **psycopg2-binary** | 2.9.11 | PostgreSQL adapter for Python |
 | **qdrant-client** | 1.17.0 | Python client for Qdrant REST + gRPC API |
 
@@ -187,8 +187,8 @@ The "Clear Chat" button in the sub-header:
               └─────┼──────────────┼────────────────┘
                     │              │
         ┌───────────▼───┐  ┌──────▼────────────┐
-        │  PostgreSQL   │  │  Qdrant (6333)    │
-        │  (port 5432)  │  │  Vector DB         │
+        │  PostgreSQL   │  │  Qdrant (Remote)  │
+        │  (port 5432)  │  │  148.230.92.74    │
         │               │  │                    │
         │ • ChatSession │  │ • guardian_incidents│
         │ • ChatMessage │  │   collection       │
@@ -442,12 +442,12 @@ When a user sends a message:
 
 | Property | Value |
 |---|---|
-| Engine | Qdrant v1.17.0 |
+| Engine | Qdrant (Remote Instance) |
+| Host | `148.230.92.74` |
 | Collection Name | `guardian_incidents` |
 | Vector Size | 768 |
 | Distance Metric | Cosine Similarity |
 | Documents Stored | 12 |
-| Storage Path | `/var/lib/qdrant/storage` |
 | API Port | 6333 (HTTP), 6334 (gRPC) |
 
 ### 7.3 Search Parameters
@@ -802,7 +802,7 @@ Each document contains a detailed natural-language description (100–300 words)
 | `OLLAMA_BASE_URL` | `http://31.220.21.156:11434` | Ollama API server URL (local or remote) |
 | `OLLAMA_MODEL` | `llama3.1:8b` | Ollama model identifier for chat/generation |
 | `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Ollama model identifier for embeddings |
-| `QDRANT_HOST` | `localhost` | Qdrant server host |
+| `QDRANT_HOST` | `148.230.92.74` | Qdrant server host (remote instance) |
 | `QDRANT_PORT` | `6333` | Qdrant HTTP API port |
 | `QDRANT_COLLECTION` | `guardian_incidents` | Qdrant collection name for document vectors |
 | `DJANGO_SECRET_KEY` | (auto-generated) | Django secret key for production |
@@ -875,18 +875,24 @@ docker compose logs -f backend
               │  RAG Pipeline  │   └──────────────────┘
               └──┬──────┬──┬──┘
                  │      │  │
-        ┌────────▼──┐ ┌─▼──▼───────┐  ┌─────────────────┐
-        │ postgres  │ │  qdrant    │  │  Ollama (remote) │
-        │ port 5432 │ │  port 6333 │  │  :11434          │
-        └───────────┘ └────────────┘  └─────────────────┘
-         (volume)      (volume)        (external)
+        ┌────────▼──┐                    ┌─────────────────┐
+        │ postgres  │                    │  Ollama (remote) │
+        │ port 5432 │                    │  :11434          │
+        └───────────┘                    └─────────────────┘
+         (volume)                         (external)
+
+                      ┌──────────────────────┐
+                      │  Qdrant (remote)     │
+                      │  148.230.92.74:6333  │
+                      └──────────────────────┘
+                       (external)
 ```
 
 ### 12.4 Docker Files Reference
 
 ```
 /app
-├── docker-compose.yml              # Orchestration — 5 services
+├── docker-compose.yml              # Orchestration — 4 services (Qdrant is remote)
 ├── .env.docker                     # Template environment variables
 ├── .dockerignore                   # Build exclusions
 ├── Makefile                        # Convenience commands
@@ -905,10 +911,13 @@ docker compose logs -f backend
 | Service | Image | Container Name | Internal Port | External Port | Health Check |
 |---|---|---|---|---|---|
 | `postgres` | `postgres:15-alpine` | `guardian-postgres` | 5432 | 5432 | `pg_isready` |
-| `qdrant` | `qdrant/qdrant:v1.17.0` | `guardian-qdrant` | 6333, 6334 | 6333 | `curl /healthz` |
 | `backend` | Custom (Python 3.11) | `guardian-backend` | 8001 | 8001 | `curl /api/` |
 | `frontend` | Custom (Nginx 1.27) | `guardian-frontend` | 3000 | 3000 | `curl /` |
 | `nginx` | `nginx:1.27-alpine` | `guardian-proxy` | 80 | 8080 | — |
+
+**External Dependencies (not containerized):**
+- **Qdrant**: Remote instance at `148.230.92.74:6333`
+- **Ollama**: Remote instance at `http://31.220.21.156:11434`
 
 ### 12.6 Backend Dockerfile — Lean Build
 
@@ -1043,7 +1052,7 @@ REACT_APP_BACKEND_URL=http://localhost:8080   # Set to public domain in prod
 | Service | Port | Start Command |
 |---|---|---|
 | PostgreSQL 15 | 5432 | `pg_ctlcluster 15 main start` |
-| Qdrant 1.17.0 | 6333 | `qdrant --config-path /etc/qdrant/config.yaml` |
+| Qdrant (remote) | 6333 | Running at `148.230.92.74:6333` |
 | Ollama (remote) | 11434 | Running at `http://31.220.21.156:11434` |
 
 ### First-Time Setup Sequence
@@ -1060,13 +1069,13 @@ sudo -u postgres psql -c "CREATE DATABASE guardian_db OWNER guardian_user;"
 cd /app/backend
 python manage.py migrate
 
-# 4. Start Qdrant
-nohup qdrant --config-path /etc/qdrant/config.yaml &
+# 4. Verify remote Qdrant is accessible
+curl http://148.230.92.74:6333/healthz
 
 # 5. Start backend (via supervisor)
 sudo supervisorctl restart backend
 
-# 6. Ingest knowledge base into Qdrant
+# 6. Ingest knowledge base into remote Qdrant
 curl -X POST http://localhost:8001/api/ingest/
 
 # 7. Verify all services
