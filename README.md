@@ -79,7 +79,22 @@ The "Clear Chat" button in the sub-header:
 - **Connected Badge** (sub-header): Displays aggregate connection status. Polls `/api/status/` every 30 seconds.
 - **Service Account Authentication Banner**: A teal-accented banner below the header confirming authentication status.
 
-### 2.6 Responsive & Mobile Design
+### 2.6 Analytics Dashboard
+
+Accessible via the bar chart icon in the top header or by navigating to `/dashboard`. The dashboard provides two tabs:
+
+**Usage Metrics Tab:**
+- **Summary Cards**: Total sessions, total messages (user/bot breakdown), average messages per session
+- **Messages Over Time**: Bar chart showing daily user and bot message counts
+- **Feedback Distribution**: Pie chart showing thumbs up, thumbs down, and no-feedback percentages
+
+**RAG Performance Tab:**
+- **Summary Cards**: Total responses, average RAG latency, average LLM latency, average RAG similarity score
+- **Latency Over Time**: Line chart showing daily RAG and LLM latency trends
+- **RAG Score Quality**: Pie chart categorizing responses as Excellent (≥0.7), Good (0.5-0.7), Fair (0.3-0.5), or Poor (<0.3)
+- **Response Time Distribution**: Horizontal bar chart showing response time buckets (Fast <5s, Normal 5-30s, Slow 30-60s, Very Slow >60s)
+
+### 2.7 Responsive & Mobile Design
 
 | Viewport | Behavior |
 |---|---|
@@ -760,6 +775,99 @@ Triggers ingestion of all 12 Guardian incident documents from `mock_data.py` int
 {
   "status": "success",
   "documents_ingested": 12
+}
+```
+
+---
+
+### 9.11 Usage Analytics
+
+```
+GET /api/analytics/usage/
+```
+
+Returns usage analytics for the dashboard including message counts, session statistics, and feedback distribution over the last 30 days.
+
+**Response** `200 OK`:
+```json
+{
+  "summary": {
+    "total_sessions": 5,
+    "total_messages": 24,
+    "total_user_messages": 12,
+    "total_bot_messages": 12,
+    "avg_messages_per_session": 4.8
+  },
+  "messages_over_time": [
+    {
+      "date": "2026-03-23",
+      "user_count": 12,
+      "bot_count": 12,
+      "total": 24
+    }
+  ],
+  "sessions_over_time": [
+    {
+      "date": "2026-03-23",
+      "count": 5
+    }
+  ],
+  "feedback_distribution": {
+    "thumbs_up": 3,
+    "thumbs_down": 1,
+    "no_feedback": 8
+  }
+}
+```
+
+---
+
+### 9.12 RAG Performance Analytics
+
+```
+GET /api/analytics/rag/
+```
+
+Returns RAG pipeline performance metrics including latency statistics, similarity scores, and distributions over the last 30 days.
+
+**Response** `200 OK`:
+```json
+{
+  "summary": {
+    "total_responses": 12,
+    "avg_rag_latency_ms": 271.5,
+    "avg_llm_latency_ms": 45000.0,
+    "avg_total_latency_ms": 45271.5,
+    "avg_rag_score": 0.558,
+    "max_rag_latency_ms": 350,
+    "max_llm_latency_ms": 120000,
+    "min_rag_latency_ms": 200,
+    "min_llm_latency_ms": 15000,
+    "max_rag_score": 0.85,
+    "min_rag_score": 0.32
+  },
+  "latency_over_time": [
+    {
+      "date": "2026-03-23",
+      "avg_rag_ms": 271.5,
+      "avg_llm_ms": 45000.0,
+      "avg_total_ms": 45271.5,
+      "avg_score": 0.558,
+      "count": 12
+    }
+  ],
+  "score_distribution": {
+    "excellent": 2,
+    "good": 6,
+    "fair": 3,
+    "poor": 1
+  },
+  "latency_distribution": {
+    "fast": 0,
+    "normal": 4,
+    "slow": 5,
+    "very_slow": 3
+  }
 }
 ```
 
