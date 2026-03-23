@@ -7,8 +7,7 @@ import {
   Users, 
   Clock, 
   TrendingUp,
-  ThumbsUp,
-  ThumbsDown,
+  Star,
   Zap,
   Target
 } from "lucide-react";
@@ -79,6 +78,15 @@ const Dashboard = () => {
     fair: "#ffd93d",
     poor: "#ff6b6b",
   };
+  
+  const STAR_COLORS = {
+    '5_stars': "#00AAAA",
+    '4_stars': "#6893ff",
+    '3_stars': "#ffd93d",
+    '2_stars': "#ff9f43",
+    '1_star': "#ff6b6b",
+    'no_rating': "#4a5568",
+  };
 
   const formatLatency = (ms) => {
     if (ms >= 60000) return `${(ms / 60000).toFixed(1)}m`;
@@ -89,13 +97,17 @@ const Dashboard = () => {
   const renderUsageTab = () => {
     if (!usageData) return null;
 
-    const { summary, messages_over_time, feedback_distribution } = usageData;
+    const { summary, messages_over_time, rating_distribution } = usageData;
 
-    const feedbackPieData = [
-      { name: "Thumbs Up", value: feedback_distribution.thumbs_up, color: "#00AAAA" },
-      { name: "Thumbs Down", value: feedback_distribution.thumbs_down, color: "#ff6b6b" },
-      { name: "No Feedback", value: feedback_distribution.no_feedback, color: "#4a5568" },
-    ].filter((d) => d.value > 0);
+    const ratingBarData = [
+      { name: "5 Stars", value: rating_distribution['5_stars'], fill: STAR_COLORS['5_stars'] },
+      { name: "4 Stars", value: rating_distribution['4_stars'], fill: STAR_COLORS['4_stars'] },
+      { name: "3 Stars", value: rating_distribution['3_stars'], fill: STAR_COLORS['3_stars'] },
+      { name: "2 Stars", value: rating_distribution['2_stars'], fill: STAR_COLORS['2_stars'] },
+      { name: "1 Star", value: rating_distribution['1_star'], fill: STAR_COLORS['1_star'] },
+    ];
+    
+    const totalRated = ratingBarData.reduce((sum, item) => sum + item.value, 0);
 
     return (
       <div className="dashboard-content" data-testid="usage-tab-content">
@@ -119,6 +131,13 @@ const Dashboard = () => {
             value={summary.avg_messages_per_session}
             icon={TrendingUp}
             color="#ffd93d"
+          />
+          <StatCard
+            title="Avg Rating"
+            value={summary.avg_rating ? `${summary.avg_rating.toFixed(1)}/5` : "N/A"}
+            subtitle={`${summary.total_rated || 0} rated responses`}
+            icon={Star}
+            color="#ff9f43"
           />
         </div>
 
@@ -154,27 +173,16 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Feedback Distribution */}
+        {/* Rating Distribution */}
         <div className="chart-container">
-          <h3 className="chart-title">Feedback Distribution</h3>
-          {feedbackPieData.length > 0 ? (
-            <div className="feedback-section">
+          <h3 className="chart-title">User Ratings Distribution</h3>
+          {totalRated > 0 ? (
+            <div className="rating-section">
               <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={feedbackPieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={5}
-                    dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {feedbackPieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
+                <BarChart data={ratingBarData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2a3a5c" />
+                  <XAxis type="number" stroke="#BCCBF2" tick={{ fill: "#BCCBF2" }} />
+                  <YAxis dataKey="name" type="category" stroke="#BCCBF2" tick={{ fill: "#BCCBF2" }} width={70} />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "#0a1628",
@@ -183,21 +191,27 @@ const Dashboard = () => {
                       color: "#fff",
                     }}
                   />
-                </PieChart>
+                  <Bar dataKey="value" name="Responses" radius={[0, 4, 4, 0]}>
+                    {ratingBarData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
               </ResponsiveContainer>
-              <div className="feedback-legend">
-                <div className="feedback-item">
-                  <ThumbsUp size={20} color="#00AAAA" />
-                  <span>{feedback_distribution.thumbs_up} positive</span>
-                </div>
-                <div className="feedback-item">
-                  <ThumbsDown size={20} color="#ff6b6b" />
-                  <span>{feedback_distribution.thumbs_down} negative</span>
+              <div className="rating-legend">
+                <div className="rating-summary">
+                  <Star size={20} className="fill-yellow-400 text-yellow-400" />
+                  <span className="text-white font-semibold">
+                    {summary.avg_rating ? summary.avg_rating.toFixed(1) : "0"} average
+                  </span>
+                  <span className="text-gray-400">
+                    ({totalRated} ratings, {rating_distribution.no_rating} unrated)
+                  </span>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="no-data">No feedback data available yet</div>
+            <div className="no-data">No ratings yet. Users can rate bot responses with 1-5 stars.</div>
           )}
         </div>
       </div>

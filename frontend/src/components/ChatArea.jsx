@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from 'react';
-import { ThumbsUp, ThumbsDown, Send, Loader2 } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { Star, Send, Loader2 } from 'lucide-react';
 
 /* --- Robot Icon (used for bot avatar) --- */
 const BotAvatar = ({ size = 43 }) => (
@@ -39,6 +39,35 @@ const UserAvatar = ({ size = 43 }) => (
     </svg>
   </div>
 );
+
+/* --- Star Rating Component --- */
+const StarRating = ({ rating, onRate, messageId }) => {
+  const [hoverRating, setHoverRating] = useState(0);
+  
+  return (
+    <div className="flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          onClick={() => onRate && onRate(messageId, star)}
+          onMouseEnter={() => setHoverRating(star)}
+          onMouseLeave={() => setHoverRating(0)}
+          className="transition-transform hover:scale-110 focus:outline-none"
+          data-testid={`star-${star}`}
+        >
+          <Star
+            size={18}
+            className={`transition-colors ${
+              (hoverRating || rating) >= star
+                ? 'fill-yellow-400 text-yellow-400'
+                : 'text-gray-300 hover:text-yellow-300'
+            }`}
+          />
+        </button>
+      ))}
+    </div>
+  );
+};
 
 /* --- Welcome State --- */
 const WelcomeState = () => (
@@ -84,27 +113,17 @@ const BotMessage = ({ message, onFeedback }) => (
 
         {message.showFeedback && (
           <div className="border-t border-gray-200 mt-3 pt-2 flex items-center gap-3">
-            <span className="text-xs text-gray-500">Was this helpful?</span>
-            <button
-              onClick={() => onFeedback && onFeedback(message.id, 'up')}
-              className={`transition-colors ${
-                message.feedback === 'up'
-                  ? 'text-[#6893ff]'
-                  : 'text-[#1c2e4c] hover:text-[#6893ff]'
-              }`}
-            >
-              <ThumbsUp size={16} />
-            </button>
-            <button
-              onClick={() => onFeedback && onFeedback(message.id, 'down')}
-              className={`transition-colors ${
-                message.feedback === 'down'
-                  ? 'text-red-500'
-                  : 'text-[#1c2e4c] hover:text-red-500'
-              }`}
-            >
-              <ThumbsDown size={16} />
-            </button>
+            <span className="text-xs text-gray-500">Rate this response:</span>
+            <StarRating 
+              rating={message.rating} 
+              onRate={onFeedback}
+              messageId={message.id}
+            />
+            {message.rating && (
+              <span className="text-xs text-gray-400 ml-1">
+                ({message.rating}/5)
+              </span>
+            )}
           </div>
         )}
       </div>

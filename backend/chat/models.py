@@ -21,12 +21,6 @@ class ChatMessage(models.Model):
         ('bot', 'Bot'),
     ]
 
-    FEEDBACK_CHOICES = [
-        ('none', 'None'),
-        ('up', 'Thumbs Up'),
-        ('down', 'Thumbs Down'),
-    ]
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     session = models.ForeignKey(
         ChatSession,
@@ -36,10 +30,10 @@ class ChatMessage(models.Model):
     message_type = models.CharField(max_length=4, choices=MESSAGE_TYPES)
     text = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
-    feedback = models.CharField(
-        max_length=4,
-        choices=FEEDBACK_CHOICES,
-        default='none',
+    rating = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text='User rating from 1 to 5 stars (null = no rating)',
     )
     sources = models.JSONField(default=list, blank=True)
     rag_latency_ms = models.IntegerField(default=0, help_text='RAG search time in milliseconds')

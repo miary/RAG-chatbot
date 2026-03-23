@@ -87,7 +87,7 @@ const ChatApp = () => {
             hour12: true,
           }),
           showFeedback: m.message_type === "bot",
-          feedback: m.feedback,
+          rating: m.rating,
           sources: m.sources || [],
           link: m.text.includes("pspd-guardian-help-dev.cbp.dhs.gov")
             ? "https://pspd-guardian-help-dev.cbp.dhs.gov"
@@ -156,7 +156,7 @@ const ChatApp = () => {
               hour12: true,
             }),
             showFeedback: true,
-            feedback: "none",
+            rating: null,
             sources: bot_message.sources || [],
             link: bot_message.text.includes(
               "pspd-guardian-help-dev.cbp.dhs.gov"
@@ -187,16 +187,16 @@ const ChatApp = () => {
     }
   }, [inputValue, sessionId, isLoading]);
 
-  const handleFeedback = useCallback(async (messageId, feedback) => {
+  const handleFeedback = useCallback(async (messageId, rating) => {
     try {
       await axios.patch(`${API}/messages/${messageId}/feedback/`, {
-        feedback,
+        rating,
       });
       setMessages((prev) =>
-        prev.map((m) => (m.id === messageId ? { ...m, feedback } : m))
+        prev.map((m) => (m.id === messageId ? { ...m, rating } : m))
       );
     } catch (e) {
-      console.error("Feedback error:", e);
+      console.error("Rating error:", e);
     }
   }, []);
 

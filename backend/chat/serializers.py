@@ -5,7 +5,7 @@ from .models import ChatSession, ChatMessage
 class ChatMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatMessage
-        fields = ['id', 'session', 'message_type', 'text', 'timestamp', 'feedback', 'sources']
+        fields = ['id', 'session', 'message_type', 'text', 'timestamp', 'rating', 'sources']
         read_only_fields = ['id', 'timestamp']
 
 
@@ -50,4 +50,4 @@ class SendMessageSerializer(serializers.Serializer):
 
 
 class FeedbackSerializer(serializers.Serializer):
-    feedback = serializers.ChoiceField(choices=['up', 'down', 'none'])
+    rating = serializers.IntegerField(min_value=1, max_value=5, allow_null=True)

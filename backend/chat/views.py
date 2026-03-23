@@ -186,7 +186,7 @@ def send_message(request):
 
 @api_view(['PATCH'])
 def message_feedback(request, message_id):
-    """Update feedback on a bot message."""
+    """Update rating on a bot message (1-5 stars)."""
     try:
         message = ChatMessage.objects.get(id=message_id)
     except ChatMessage.DoesNotExist:
@@ -196,8 +196,8 @@ def message_feedback(request, message_id):
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    message.feedback = serializer.validated_data['feedback']
-    message.save(update_fields=['feedback'])
+    message.rating = serializer.validated_data['rating']
+    message.save(update_fields=['rating'])
     return Response(ChatMessageSerializer(message).data)
 
 
@@ -235,7 +235,7 @@ def usage_analytics(request):
     - Total sessions
     - Average messages per session
     - Message counts over time (daily)
-    - Feedback distribution
+    - Rating distribution (1-5 stars)
     """
     from datetime import timedelta
     
@@ -266,14 +266,21 @@ def usage_analytics(request):
         .order_by('date')
     )
     
-    # Feedback distribution (only for bot messages)
-    feedback_dist = (
-        ChatMessage.objects
-        .filter(message_type='bot')
-        .values('feedback')
-        .annotate(count=Count('id'))
-    )
-    feedback_summary = {item['feedback']: item['count'] for item in feedback_dist}
+    # Rating distribution (only for bot messages with ratings)
+    bot_messages = ChatMessage.objects.filter(message_type='bot')
+    rating_dist = {
+        '5_stars': bot_messages.filter(rating=5).count(),
+        '4_stars': bot_messages.filter(rating=4).count(),
+        '3_stars': bot_messages.filter(rating=3).count(),
+        '2_stars': bot_messages.filter(rating=2).count(),
+        '1_star': bot_messages.filter(rating=1).count(),
+        'no_rating': bot_messages.filter(rating__isnull=True).count(),
+    }
+    
+    # Calculate average rating
+    rated_messages = bot_messages.filter(rating__isnull=False)
+    avg_rating = rated_messages.aggregate(avg=Avg('rating'))['avg']
+    total_rated = rated_messages.count()
     
     # Sessions created over time (daily for last 30 days)
     sessions_by_day = (
@@ -292,6 +299,8 @@ def usage_analytics(request):
             'total_user_messages': total_user_messages,
             'total_bot_messages': total_bot_messages,
             'avg_messages_per_session': avg_messages_per_session,
+            'avg_rating': round(avg_rating, 2) if avg_rating else None,
+            'total_rated': total_rated,
         },
         'messages_over_time': [
             {
@@ -309,11 +318,7 @@ def usage_analytics(request):
             }
             for item in sessions_by_day
         ],
-        'feedback_distribution': {
-            'thumbs_up': feedback_summary.get('up', 0),
-            'thumbs_down': feedback_summary.get('down', 0),
-            'no_feedback': feedback_summary.get('none', 0),
-        },
+        'rating_distribution': rating_dist,
     })
 
 
