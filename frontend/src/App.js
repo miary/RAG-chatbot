@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
@@ -10,6 +10,7 @@ import Dashboard from "./components/Dashboard";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+const WS_URL = BACKEND_URL.replace(/^http/, 'ws');
 
 const ChatApp = () => {
   const [messages, setMessages] = useState([]);
@@ -19,6 +20,12 @@ const ChatApp = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingMessageId, setStreamingMessageId] = useState(null);
+  const [streamStatus, setStreamStatus] = useState(null);
+  const [wsConnected, setWsConnected] = useState(false);
+  const wsRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
   const [serviceStatus, setServiceStatus] = useState({
     connected: false,
     services: { ollama: false, qdrant: false, postgresql: false },
@@ -71,6 +78,166 @@ const ChatApp = () => {
     fetchSessions();
   }, [sessionId]);
 
+  // WebSocket connection management
+  const connectWebSocket = useCallback((sid) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.close();
+    }
+
+    const wsUrl = `${WS_URL}/ws/chat/${sid || 'new'}/`;
+    console.log('Connecting WebSocket to:', wsUrl);
+    
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      console.log('WebSocket connected');
+      setWsConnected(true);
+    };
+
+    ws.onclose = (event) => {
+      console.log('WebSocket closed:', event.code);
+      setWsConnected(false);
+      wsRef.current = null;
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        handleWebSocketMessage(data);
+      } catch (e) {
+        console.error('Failed to parse WebSocket message:', e);
+      }
+    };
+
+    wsRef.current = ws;
+  }, []);
+
+  // Handle WebSocket messages
+  const handleWebSocketMessage = useCallback((data) => {
+    switch (data.type) {
+      case 'connection_established':
+        console.log('WS connection established, session:', data.session_id);
+        if (data.session_id && data.session_id !== 'new') {
+          setSessionId(data.session_id);
+        }
+        break;
+
+      case 'user_message_saved':
+        // Update temp user message with real ID
+        setMessages((prev) => prev.map((m) => 
+          m.id.startsWith('temp-') && m.type === 'user'
+            ? { ...m, id: data.message.id }
+            : m
+        ));
+        break;
+
+      case 'status':
+        setStreamStatus(data.message);
+        break;
+
+      case 'rag_complete':
+        console.log('RAG complete, sources:', data.sources?.length);
+        break;
+
+      case 'stream_start':
+        setStreamingMessageId(data.message_id);
+        setIsStreaming(true);
+        // Add streaming bot message placeholder
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: data.message_id,
+            type: 'bot',
+            text: '',
+            timestamp: new Date().toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true,
+            }),
+            showFeedback: false,
+            isStreaming: true,
+          },
+        ]);
+        break;
+
+      case 'stream_chunk':
+        // Append chunk to streaming message
+        setMessages((prev) => prev.map((m) =>
+          m.id === data.message_id
+            ? { ...m, text: m.text + data.chunk }
+            : m
+        ));
+        break;
+
+      case 'stream_complete':
+        setIsStreaming(false);
+        setIsLoading(false);
+        setStreamingMessageId(null);
+        setStreamStatus(null);
+        // Update message with final data
+        setMessages((prev) => prev.map((m) =>
+          m.id === streamingMessageId || m.id === data.message_id
+            ? {
+                ...m,
+                id: data.message.id,
+                text: data.message.text,
+                timestamp: new Date(data.message.timestamp).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true,
+                }),
+                sources: data.message.sources || [],
+                showFeedback: true,
+                isStreaming: false,
+                rating: null,
+              }
+            : m
+        ));
+        // Refresh session list
+        break;
+
+      case 'error':
+        console.error('WebSocket error:', data.message);
+        setIsLoading(false);
+        setIsStreaming(false);
+        setStreamStatus(null);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `error-${Date.now()}`,
+            type: 'bot',
+            text: `Error: ${data.message}. Please try again.`,
+            timestamp: new Date().toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true,
+            }),
+            showFeedback: false,
+          },
+        ]);
+        break;
+
+      default:
+        console.log('Unknown WS message type:', data.type);
+    }
+  }, [streamingMessageId]);
+
+  // Cleanup WebSocket on unmount
+  useEffect(() => {
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, []);
+
   // Load a session
   const loadSession = useCallback(async (id) => {
     try {
@@ -96,18 +263,21 @@ const ChatApp = () => {
       );
       setShowWelcome(false);
       setSidebarOpen(false);
+      // Connect WebSocket for this session
+      connectWebSocket(id);
     } catch (e) {
       console.error("Failed to load session:", e);
     }
-  }, []);
+  }, [connectWebSocket]);
 
   const handleSendMessage = useCallback(async () => {
-    if (!inputValue.trim() || isLoading) return;
+    if (!inputValue.trim() || isLoading || isStreaming) return;
 
     const userText = inputValue.trim();
     setInputValue("");
     setShowWelcome(false);
     setIsLoading(true);
+    setStreamStatus("Connecting...");
 
     // Optimistic user message
     const tempUserMsg = {
@@ -122,70 +292,108 @@ const ChatApp = () => {
     };
     setMessages((prev) => [...prev, tempUserMsg]);
 
-    try {
-      const res = await axios.post(`${API}/chat/`, {
+    // Try WebSocket streaming first
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'chat_message',
         message: userText,
-        session_id: sessionId || null,
-      });
-
-      const { session_id: newSessionId, user_message, bot_message } = res.data;
-      setSessionId(newSessionId);
-
-      // Replace temp user msg and add bot msg
-      setMessages((prev) => {
-        const filtered = prev.filter((m) => m.id !== tempUserMsg.id);
-        return [
-          ...filtered,
-          {
-            id: user_message.id,
-            type: "user",
-            text: user_message.text,
-            timestamp: new Date(user_message.timestamp).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-            }),
-          },
-          {
-            id: bot_message.id,
-            type: "bot",
-            text: bot_message.text,
-            timestamp: new Date(bot_message.timestamp).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-            }),
-            showFeedback: true,
-            rating: null,
-            sources: bot_message.sources || [],
-            link: bot_message.text.includes(
-              "pspd-guardian-help-dev.cbp.dhs.gov"
-            )
-              ? "https://pspd-guardian-help-dev.cbp.dhs.gov"
-              : null,
-          },
-        ];
-      });
-    } catch (e) {
-      console.error("Chat error:", e);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `error-${Date.now()}`,
-          type: "bot",
-          text: "Sorry, I encountered an error processing your request. Please try again.",
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          }),
-          showFeedback: false,
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
+      }));
+      return;
     }
-  }, [inputValue, sessionId, isLoading]);
+
+    // Connect WebSocket if not connected
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      const wsUrl = `${WS_URL}/ws/chat/${sessionId || 'new'}/`;
+      const ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        setWsConnected(true);
+        ws.send(JSON.stringify({
+          type: 'chat_message',
+          message: userText,
+        }));
+      };
+
+      ws.onclose = () => {
+        setWsConnected(false);
+        wsRef.current = null;
+      };
+
+      ws.onerror = async () => {
+        // Fallback to REST API if WebSocket fails
+        console.log('WebSocket failed, falling back to REST API');
+        try {
+          const res = await axios.post(`${API}/chat/`, {
+            message: userText,
+            session_id: sessionId || null,
+          });
+
+          const { session_id: newSessionId, user_message, bot_message } = res.data;
+          setSessionId(newSessionId);
+
+          setMessages((prev) => {
+            const filtered = prev.filter((m) => m.id !== tempUserMsg.id);
+            return [
+              ...filtered,
+              {
+                id: user_message.id,
+                type: "user",
+                text: user_message.text,
+                timestamp: new Date(user_message.timestamp).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                }),
+              },
+              {
+                id: bot_message.id,
+                type: "bot",
+                text: bot_message.text,
+                timestamp: new Date(bot_message.timestamp).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                }),
+                showFeedback: true,
+                rating: null,
+                sources: bot_message.sources || [],
+              },
+            ];
+          });
+        } catch (e) {
+          console.error("Chat error:", e);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `error-${Date.now()}`,
+              type: "bot",
+              text: "Sorry, I encountered an error. Please try again.",
+              timestamp: new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+              }),
+              showFeedback: false,
+            },
+          ]);
+        } finally {
+          setIsLoading(false);
+          setStreamStatus(null);
+        }
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handleWebSocketMessage(data);
+        } catch (e) {
+          console.error('Failed to parse message:', e);
+        }
+      };
+
+      wsRef.current = ws;
+    }
+  }, [inputValue, sessionId, isLoading, isStreaming, handleWebSocketMessage]);
 
   const handleFeedback = useCallback(async (messageId, rating) => {
     try {
@@ -255,6 +463,8 @@ const ChatApp = () => {
           onFeedback={handleFeedback}
           showWelcome={showWelcome}
           isLoading={isLoading}
+          isStreaming={isStreaming}
+          streamStatus={streamStatus}
         />
       </main>
 

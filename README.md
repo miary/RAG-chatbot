@@ -61,7 +61,17 @@ Each bot response includes a rating section with:
 - Ratings are persisted to PostgreSQL via a PATCH API call
 - Rating data is aggregated in the analytics dashboard
 
-### 2.3 Chat History Sidebar
+### 2.3 Real-Time WebSocket Streaming
+
+Chat responses are streamed in real-time via WebSocket connections:
+- **Connection**: Automatic WebSocket connection when starting a chat session
+- **Streaming Status**: Shows "Searching knowledge base..." during RAG retrieval, then "Generating response..." during LLM generation
+- **Live Text**: Bot responses appear character-by-character as they're generated
+- **Cursor Animation**: A blinking cursor indicates ongoing generation
+- **Fallback**: Automatically falls back to REST API if WebSocket connection fails
+- **WebSocket Endpoint**: `ws://host/ws/chat/{session_id}/`
+
+### 2.4 Chat History Sidebar
 
 - **Session List**: Displays all past conversation sessions ordered by most recent activity. Each entry shows a truncated title (derived from the first user message) and a date.
 - **Session Loading**: Clicking a sidebar entry loads the full conversation from the backend, restoring all messages with their original timestamps and feedback states.

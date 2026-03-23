@@ -107,11 +107,19 @@ const FormatText = ({ text }) => {
 const BotMessage = ({ message, onFeedback }) => (
   <div className="flex items-start gap-3 max-w-[85%]">
     <BotAvatar size={43} />
-    <div>
+    <div className="flex-1">
       <div className="rounded-xl px-4 py-3 bg-white text-[#1a1a2e] text-sm leading-relaxed">
-        <FormatText text={message.text} />
+        {message.text ? (
+          <FormatText text={message.text} />
+        ) : message.isStreaming ? (
+          <span className="text-gray-400 italic">Generating response...</span>
+        ) : null}
+        
+        {message.isStreaming && (
+          <span className="inline-block w-2 h-4 bg-[#6893ff] ml-1 animate-pulse" />
+        )}
 
-        {message.showFeedback && (
+        {message.showFeedback && !message.isStreaming && (
           <div className="border-t border-gray-200 mt-3 pt-2 flex items-center gap-3">
             <span className="text-xs text-gray-500">Rate this response:</span>
             <StarRating 
@@ -149,12 +157,14 @@ const UserMessage = ({ message }) => (
 );
 
 /* --- Typing indicator --- */
-const TypingIndicator = () => (
+const TypingIndicator = ({ status }) => (
   <div className="flex items-start gap-3 max-w-[85%]">
     <BotAvatar size={43} />
     <div className="rounded-xl px-4 py-3 bg-white/90 flex items-center gap-2">
       <Loader2 size={16} className="animate-spin text-[#6893ff]" />
-      <span className="text-sm text-gray-500">Searching Guardian incidents...</span>
+      <span className="text-sm text-gray-500">
+        {status || "Processing your request..."}
+      </span>
     </div>
   </div>
 );
@@ -168,12 +178,14 @@ const ChatArea = ({
   onFeedback,
   showWelcome,
   isLoading,
+  isStreaming,
+  streamStatus,
 }) => {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isLoading]);
+  }, [messages, isLoading, isStreaming]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -181,6 +193,9 @@ const ChatArea = ({
       onSendMessage();
     }
   };
+
+  // Check if there's already a streaming message in the list
+  const hasStreamingMessage = messages.some(m => m.isStreaming);
 
   return (
     <div className="flex-1 flex flex-col" style={{ backgroundColor: '#111b2e' }}>
@@ -196,7 +211,7 @@ const ChatArea = ({
               <UserMessage key={msg.id} message={msg} />
             )
           )}
-          {isLoading && <TypingIndicator />}
+          {isLoading && !hasStreamingMessage && <TypingIndicator status={streamStatus} />}
           <div ref={messagesEndRef} />
         </div>
       )}

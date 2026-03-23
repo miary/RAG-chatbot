@@ -68,13 +68,12 @@ print(f'  Ingested {len(GUARDIAN_INCIDENTS)} documents.')
 "
 
 echo "=========================================="
-echo " Starting Gunicorn on 0.0.0.0:8001"
+echo " Starting Daphne (ASGI) on 0.0.0.0:8001"
+echo " WebSocket streaming enabled"
 echo "=========================================="
 
-exec gunicorn guardian_project.wsgi:application \
-    --bind 0.0.0.0:8001 \
-    --workers "${GUNICORN_WORKERS:-2}" \
-    --timeout "${GUNICORN_TIMEOUT:-300}" \
-    --access-logfile - \
-    --error-logfile - \
-    --log-level info
+exec daphne \
+    -b 0.0.0.0 \
+    -p 8001 \
+    --access-log - \
+    guardian_project.asgi:application

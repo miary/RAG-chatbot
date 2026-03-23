@@ -1,9 +1,10 @@
 # =============================================================================
 # PSPD Guardian — Backend Dockerfile
-# Django 5 + Gunicorn + Qdrant Client + Ollama Client
+# Django 5 + Daphne (ASGI) + Channels + Qdrant Client + Ollama Client
 #
 # Embeddings are generated via remote Ollama (nomic-embed-text), so there is
 # no local ML model to cache — the image stays small and fast to build.
+# WebSocket streaming enabled via Django Channels.
 # =============================================================================
 FROM python:3.11-slim AS base
 
