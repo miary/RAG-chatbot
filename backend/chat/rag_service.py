@@ -1,4 +1,5 @@
 import logging
+import math
 from typing import List
 
 from django.conf import settings
@@ -16,8 +17,12 @@ logger = logging.getLogger(__name__)
 _ollama_embed_client = None
 _qdrant_client = None
 
-# nomic-embed-text produces 768-dimensional vectors
-EMBEDDING_DIM = 768
+# Matryoshka Representation Learning (MRL) Configuration
+# nomic-embed-text produces 768-dimensional vectors, but supports MRL
+# We truncate to 256 dimensions for faster search with minimal quality loss
+FULL_EMBEDDING_DIM = 768  # Original dimension from nomic-embed-text
+MRL_EMBEDDING_DIM = 256   # Truncated dimension for MRL
+EMBEDDING_DIM = MRL_EMBEDDING_DIM  # Active dimension used in Qdrant
 
 
 def get_ollama_embed_client():
@@ -26,25 +31,61 @@ def get_ollama_embed_client():
     if _ollama_embed_client is None:
         _ollama_embed_client = Client(host=settings.OLLAMA_BASE_URL)
         logger.info(
-            'Ollama embedding client configured for %s (model: %s)',
+            'Ollama embedding client configured for %s (model: %s, MRL dim: %d)',
             settings.OLLAMA_BASE_URL,
             settings.OLLAMA_EMBED_MODEL,
+            MRL_EMBEDDING_DIM,
         )
     return _ollama_embed_client
 
 
+def normalize_vector(vector: list[float]) -> list[float]:
+    """L2 normalize a vector for cosine similarity."""
+    norm = math.sqrt(sum(x * x for x in vector))
+    if norm == 0:
+        return vector
+    return [x / norm for x in vector]
+
+
+def apply_mrl(embeddings: list[list[float]], target_dim: int = MRL_EMBEDDING_DIM) -> list[list[float]]:
+    """Apply Matryoshka Representation Learning by truncating and normalizing vectors.
+    
+    MRL-trained models (like nomic-embed-text) produce embeddings where the first N
+    dimensions capture the most important semantic information. By truncating to a
+    smaller dimension and re-normalizing, we get compact vectors that retain most
+    of the original quality.
+    
+    Args:
+        embeddings: List of full-dimensional embedding vectors
+        target_dim: Target dimension to truncate to (default: 256)
+    
+    Returns:
+        List of truncated and normalized embedding vectors
+    """
+    truncated = []
+    for emb in embeddings:
+        # Truncate to first target_dim dimensions
+        truncated_emb = emb[:target_dim]
+        # Re-normalize for cosine similarity
+        normalized_emb = normalize_vector(truncated_emb)
+        truncated.append(normalized_emb)
+    return truncated
+
+
 def embed_texts(texts: list[str]) -> list[list[float]]:
-    """Embed a list of texts using Ollama nomic-embed-text."""
+    """Embed a list of texts using Ollama nomic-embed-text with MRL truncation."""
     client = get_ollama_embed_client()
     response = client.embed(
         model=settings.OLLAMA_EMBED_MODEL,
         input=texts,
     )
-    return response['embeddings']
+    full_embeddings = response['embeddings']
+    # Apply MRL: truncate to 256 dimensions and normalize
+    return apply_mrl(full_embeddings, MRL_EMBEDDING_DIM)
 
 
 def embed_query(query: str) -> list[float]:
-    """Embed a single query string."""
+    """Embed a single query string with MRL truncation."""
     vectors = embed_texts([query])
     return vectors[0]
 
@@ -64,9 +105,14 @@ def get_qdrant():
 def ensure_collection():
     """Create the Qdrant collection if it doesn't already exist.
 
-    If an existing collection has the wrong vector size (e.g. 384 from a
-    previous embedding model), it is deleted and recreated with the
-    correct dimensions for nomic-embed-text (768).
+    Uses Matryoshka Representation Learning (MRL) with 256 dimensions
+    instead of the full 768 dimensions from nomic-embed-text. This provides:
+    - ~3x faster similarity search
+    - ~3x less memory usage
+    - Minimal quality degradation (MRL-trained models preserve semantics)
+    
+    If an existing collection has the wrong vector size, it is deleted
+    and recreated with the correct MRL dimensions.
     """
     client = get_qdrant()
     collection_name = settings.QDRANT_COLLECTION
@@ -78,24 +124,24 @@ def ensure_collection():
         existing_size = info.config.params.vectors.size
         if existing_size != EMBEDDING_DIM:
             logger.warning(
-                'Collection "%s" has vector size %d, expected %d. Recreating...',
+                'Collection "%s" has vector size %d, expected %d (MRL). Recreating...',
                 collection_name,
                 existing_size,
                 EMBEDDING_DIM,
             )
             client.delete_collection(collection_name)
         else:
-            logger.info('Qdrant collection "%s" already exists with correct dimensions.', collection_name)
+            logger.info('Qdrant collection "%s" already exists with correct MRL dimensions (%d).', collection_name, EMBEDDING_DIM)
             return
 
     client.create_collection(
         collection_name=collection_name,
         vectors_config=VectorParams(
-            size=EMBEDDING_DIM,  # nomic-embed-text output dimension
+            size=EMBEDDING_DIM,  # MRL truncated dimension (256)
             distance=Distance.COSINE,
         ),
     )
-    logger.info('Created Qdrant collection: %s (dim=%d)', collection_name, EMBEDDING_DIM)
+    logger.info('Created Qdrant collection: %s (MRL dim=%d)', collection_name, EMBEDDING_DIM)
 
 
 def ingest_documents(documents: list[dict]):

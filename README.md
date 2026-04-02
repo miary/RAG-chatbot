@@ -454,16 +454,23 @@ When a user sends a message:
 
 ## 7. RAG Pipeline — Deep Dive
 
-### 7.1 Embedding Model
+### 7.1 Embedding Model with Matryoshka Representation Learning (MRL)
 
 | Property | Value |
 |---|---|
 | Model | `nomic-embed-text` (hosted on Ollama) |
-| Dimensions | 768 |
+| Full Dimensions | 768 |
+| **MRL Dimensions** | **256** (truncated and normalized) |
 | Max Sequence Length | 8192 tokens |
 | Architecture | Nomic AI's text embedding model with Matryoshka representation |
 | Hosting | Remote Ollama server (same as LLM — no local model download required) |
 | Inference Speed | ~10–50ms per query (network round-trip to Ollama) |
+
+**Matryoshka Representation Learning (MRL):**
+The `nomic-embed-text` model is trained with MRL, meaning the first N dimensions of the embedding capture the most important semantic information. We truncate the 768-dim vectors to 256 dimensions and re-normalize for cosine similarity, achieving:
+- **~3x faster** similarity search
+- **~3x less** memory usage in Qdrant
+- **Minimal quality loss** — the most important semantic features are preserved in the first 256 dimensions
 
 ### 7.2 Vector Database Configuration
 
@@ -472,7 +479,7 @@ When a user sends a message:
 | Engine | Qdrant (Remote Instance) |
 | Host | `148.230.92.74` |
 | Collection Name | `guardian_incidents` |
-| Vector Size | 768 |
+| Vector Size | **256** (MRL truncated) |
 | Distance Metric | Cosine Similarity |
 | Documents Stored | 12 |
 | API Port | 6333 (HTTP), 6334 (gRPC) |

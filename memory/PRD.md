@@ -75,15 +75,22 @@ Frontend (React 19) → Nginx Proxy → Django 5.2 Backend
 - `GET /api/analytics/rag/` - RAG performance analytics
 
 ## Key Technical Details
-- **Embedding Model**: nomic-embed-text (768 dimensions)
+- **Embedding Model**: nomic-embed-text with MRL (truncated from 768 to 256 dimensions)
 - **LLM Model**: llama3.1:8b
 - **Vector DB**: Qdrant (remote at 148.230.92.74:6333)
 - **Knowledge Base**: 12 Guardian incident documents
 - **Rating System**: 5-star scale (1-5), stored as IntegerField
+- **WebSocket Streaming**: Real-time response streaming via Django Channels
 
 ## Database Schema
 - `chat_chatsession`: id (uuid), title, created_at, updated_at
 - `chat_chatmessage`: id (uuid), session (fk), message_type, text, timestamp, rating (int 1-5, nullable), sources (json), rag_latency_ms, llm_latency_ms, total_latency_ms, top_rag_score
+
+## Vector Database (Qdrant)
+- **Collection**: `guardian_incidents`
+- **Dimensions**: 256 (MRL truncated from 768)
+- **Distance**: Cosine similarity
+- **MRL Benefits**: ~3x faster search, ~3x less memory, minimal quality loss
 
 ## Status: COMPLETED
 All phases implemented and tested. Application is production-ready.
