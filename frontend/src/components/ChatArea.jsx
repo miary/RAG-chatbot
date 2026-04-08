@@ -73,9 +73,9 @@ const StarRating = ({ rating, onRate, messageId }) => {
 const WelcomeState = () => (
   <div className="flex-1 flex flex-col items-center justify-center px-4">
     <BotAvatar size={78} />
-    <h2 className="text-white text-lg font-semibold mt-4">Welcome to PSPD Guardian</h2>
+    <h2 className="text-white text-lg font-semibold mt-4">Welcome to FRDS</h2>
     <p className="text-white/70 text-sm mt-2 text-center max-w-md leading-relaxed">
-      I can help you find solutions to Guardian incidents based on historical data.&nbsp;
+      I can help you find solutions to FRDS incidents based on historical data.&nbsp;
       Ask me about technical issues, error messages, or troubleshooting steps.
     </p>
   </div>
@@ -224,7 +224,7 @@ const ChatArea = ({
             value={inputValue}
             onChange={(e) => onInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="What Guardian issue can I help with today?"
+            placeholder="What FRDS issue can I help with today?"
             disabled={isLoading}
             className="w-full rounded-xl py-3 pl-4 pr-14 text-sm text-[#333] placeholder-gray-400 outline-none border-2 border-transparent focus:border-[#6893ff] transition-colors disabled:opacity-60"
             style={{

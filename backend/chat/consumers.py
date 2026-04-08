@@ -256,8 +256,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         {
                             'role': 'system',
                             'content': (
-                                'You are PSPD Guardian, a helpful technical support chatbot for '
-                                'the PSPD Guardian system. You help users troubleshoot incidents '
+                                'You are FRDS, a helpful technical support chatbot for '
+                                'the FRDS system. You help users troubleshoot incidents '
                                 'and find solutions based on historical data. Keep responses '
                                 'concise and actionable.'
                             ),

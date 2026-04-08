@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-pspd-guardian-secret-key-change-in-prod')
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-pspd-frds-secret-key-change-in-prod')
 
 DEBUG = True
 
@@ -38,7 +38,7 @@ MIDDLEWARE = [
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
-ROOT_URLCONF = 'guardian_project.urls'
+ROOT_URLCONF = 'frds_project.urls'
 
 TEMPLATES = [
     {
@@ -56,8 +56,8 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'guardian_project.wsgi.application'
-ASGI_APPLICATION = 'guardian_project.asgi.application'
+WSGI_APPLICATION = 'frds_project.wsgi.application'
+ASGI_APPLICATION = 'frds_project.asgi.application'
 
 # Channel layers configuration
 CHANNEL_LAYERS = {
@@ -69,9 +69,9 @@ CHANNEL_LAYERS = {
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('PG_DB_NAME', 'guardian_db'),
-        'USER': os.environ.get('PG_DB_USER', 'guardian_user'),
-        'PASSWORD': os.environ.get('PG_DB_PASSWORD', 'guardian_pass'),
+        'NAME': os.environ.get('PG_DB_NAME', 'frds_db'),
+        'USER': os.environ.get('PG_DB_USER', 'frds_user'),
+        'PASSWORD': os.environ.get('PG_DB_PASSWORD', 'frds_pass'),
         'HOST': os.environ.get('PG_DB_HOST', 'localhost'),
         'PORT': os.environ.get('PG_DB_PORT', '5432'),
     }
@@ -104,7 +104,7 @@ OLLAMA_EMBED_MODEL = os.environ.get('OLLAMA_EMBED_MODEL', 'nomic-embed-text')
 # Qdrant configuration
 QDRANT_HOST = os.environ.get('QDRANT_HOST', 'localhost')
 QDRANT_PORT = int(os.environ.get('QDRANT_PORT', '6333'))
-QDRANT_COLLECTION = os.environ.get('QDRANT_COLLECTION', 'guardian_incidents')
+QDRANT_COLLECTION = os.environ.get('QDRANT_COLLECTION', 'frds_incidents')
 
 LOGGING = {
     'version': 1,

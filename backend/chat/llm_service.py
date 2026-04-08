@@ -32,7 +32,7 @@ def build_rag_prompt(query: str, context_docs: list[dict]) -> str:
 
     context_text = '\n'.join(context_parts)
 
-    prompt = f"""You are PSPD Guardian, a technical support assistant that helps users resolve Guardian system incidents. You provide clear, concise solutions based on historical incident data.
+    prompt = f"""You are FRDS, a technical support assistant that helps users resolve FRDS system incidents. You provide clear, concise solutions based on historical incident data.
 
 Use the following retrieved context documents to answer the user's question. If the context is relevant, reference specific details. If none of the context is relevant, say so honestly and offer general guidance.
 
@@ -55,8 +55,8 @@ def _fallback_response(query: str, context_docs: list[dict]) -> str:
     if not context_docs:
         return (
             "I wasn't able to find specific information related to your query in our "
-            "Guardian incident database. Please try rephrasing your question, or "
-            "contact the Guardian support team at guardian-support@cbp.dhs.gov for "
+            "FRDS incident database. Please try rephrasing your question, or "
+            "contact the FRDS support team at frds-support@cbp.dhs.gov for "
             "further assistance."
         )
 
@@ -72,12 +72,12 @@ def _fallback_response(query: str, context_docs: list[dict]) -> str:
             f"{top.get('content', '')}\n\n"
             f"*Resolution:* {top.get('resolution', 'N/A')}\n\n"
             "If this doesn't help, please rephrase your question or contact "
-            "guardian-support@cbp.dhs.gov."
+            "frds-support@cbp.dhs.gov."
         )
 
     # Good match – format a proper answer
     parts = []
-    parts.append(f"Based on our Guardian incident database, here's what I found:\n")
+    parts.append(f"Based on our FRDS incident database, here's what I found:\n")
     parts.append(f"**{top.get('title', '')}** (Category: {top.get('category', 'N/A')}, Severity: {top.get('severity', 'N/A')})\n")
     parts.append(f"{top.get('content', '')}\n")
 
@@ -110,8 +110,8 @@ def generate_response(query: str, context_docs: list[dict]) -> str:
                 {
                     'role': 'system',
                     'content': (
-                        'You are PSPD Guardian, a helpful technical support chatbot for '
-                        'the PSPD Guardian system. You help users troubleshoot incidents '
+                        'You are FRDS, a helpful technical support chatbot for '
+                        'the FRDS system. You help users troubleshoot incidents '
                         'and find solutions based on historical data. Keep responses '
                         'concise and actionable.'
                     ),

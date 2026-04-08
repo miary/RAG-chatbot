@@ -1,4 +1,4 @@
-# API Contracts - PSPD Guardian
+# API Contracts - FRDS FRDS
 
 ## Backend APIs (Django 5 - port 8001)
 

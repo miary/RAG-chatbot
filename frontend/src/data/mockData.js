@@ -8,9 +8,9 @@ export const mockChatMessages = [
   {
     id: 2,
     type: 'bot',
-    text: 'User guides can be found at pspd-guardian-help-dev.cbp.dhs.gov',
+    text: 'User guides can be found at pspd-frds-help-dev.cbp.dhs.gov',
     timestamp: '09:46 AM',
-    link: 'https://pspd-guardian-help-dev.cbp.dhs.gov',
+    link: 'https://pspd-frds-help-dev.cbp.dhs.gov',
     showFeedback: true,
   },
   {

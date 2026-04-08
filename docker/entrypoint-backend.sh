@@ -2,7 +2,7 @@
 set -e
 
 echo "=========================================="
-echo " PSPD Guardian — Backend Startup"
+echo " PSPD FRDS — Backend Startup"
 echo "=========================================="
 
 # ---------------------------------------------------------------------------
@@ -13,9 +13,9 @@ until python -c "
 import psycopg2, os
 try:
     conn = psycopg2.connect(
-        dbname=os.environ.get('PG_DB_NAME', 'guardian_db'),
-        user=os.environ.get('PG_DB_USER', 'guardian_user'),
-        password=os.environ.get('PG_DB_PASSWORD', 'guardian_pass'),
+        dbname=os.environ.get('PG_DB_NAME', 'frds_db'),
+        user=os.environ.get('PG_DB_USER', 'frds_user'),
+        password=os.environ.get('PG_DB_PASSWORD', 'frds_pass'),
         host=os.environ.get('PG_DB_HOST', 'localhost'),
         port=os.environ.get('PG_DB_PORT', '5432'),
     )
@@ -55,16 +55,16 @@ python manage.py collectstatic --noinput 2>/dev/null || true
 # ---------------------------------------------------------------------------
 # 5. Ingest mock data into Qdrant (idempotent — upsert)
 # ---------------------------------------------------------------------------
-echo "[5/5] Ingesting Guardian incident data into Qdrant..."
+echo "[5/5] Ingesting FRDS incident data into Qdrant..."
 python -c "
 import django, os
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'guardian_project.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'frds_project.settings')
 django.setup()
 from chat.rag_service import ensure_collection, ingest_documents
-from chat.mock_data import GUARDIAN_INCIDENTS
+from chat.mock_data import FRDS_INCIDENTS
 ensure_collection()
-ingest_documents(GUARDIAN_INCIDENTS)
-print(f'  Ingested {len(GUARDIAN_INCIDENTS)} documents.')
+ingest_documents(FRDS_INCIDENTS)
+print(f'  Ingested {len(FRDS_INCIDENTS)} documents.')
 "
 
 echo "=========================================="
@@ -76,4 +76,4 @@ exec daphne \
     -b 0.0.0.0 \
     -p 8001 \
     --access-log - \
-    guardian_project.asgi:application
+    frds_project.asgi:application

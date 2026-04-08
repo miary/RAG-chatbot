@@ -1,5 +1,5 @@
 # =============================================================================
-# PSPD Guardian — Frontend Dockerfile
+# PSPD FRDS — Frontend Dockerfile
 # Multi-stage: Node build → Nginx static serve
 # =============================================================================
 

@@ -1,5 +1,5 @@
 # =============================================================================
-# PSPD Guardian — Backend Dockerfile
+# PSPD FRDS — Backend Dockerfile
 # Django 5 + Daphne (ASGI) + Channels + Qdrant Client + Ollama Client
 #
 # Embeddings are generated via remote Ollama (nomic-embed-text), so there is

@@ -1,5 +1,5 @@
 # =============================================================================
-# PSPD Guardian — Makefile
+# FRDS FRDS — Makefile
 # =============================================================================
 
 .PHONY: help build up down logs restart clean status ingest
@@ -8,7 +8,7 @@ COMPOSE := docker compose
 
 help: ## Show this help message
 	@echo ""
-	@echo "  PSPD Guardian — Docker Commands"
+	@echo "  FRDS FRDS — Docker Commands"
 	@echo "  ================================"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -50,7 +50,7 @@ status: ## Show status of all services
 
 health: ## Check health of all services
 	@echo "--- PostgreSQL ---"
-	@$(COMPOSE) exec postgres pg_isready -U guardian_user || echo "DOWN"
+	@$(COMPOSE) exec postgres pg_isready -U frds_user || echo "DOWN"
 	@echo "--- Qdrant ---"
 	@curl -sf http://localhost:6333/healthz && echo " OK" || echo "DOWN"
 	@echo "--- Backend API ---"
@@ -62,14 +62,14 @@ health: ## Check health of all services
 	@echo "--- Proxy ---"
 	@curl -sf http://localhost:8080/ > /dev/null && echo "OK" || echo "DOWN"
 
-ingest: ## Re-ingest Guardian incident data into Qdrant
+ingest: ## Re-ingest FRDS incident data into Qdrant
 	curl -X POST http://localhost:8001/api/ingest/
 
 shell-backend: ## Open a shell in the backend container
 	$(COMPOSE) exec backend bash
 
 shell-db: ## Open psql in the PostgreSQL container
-	$(COMPOSE) exec postgres psql -U guardian_user -d guardian_db
+	$(COMPOSE) exec postgres psql -U frds_user -d frds_db
 
 migrate: ## Run Django migrations
 	$(COMPOSE) exec backend python manage.py migrate

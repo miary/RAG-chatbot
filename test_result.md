@@ -96,7 +96,7 @@
 # END - Testing Protocol - DO NOT EDIT OR REMOVE THIS SECTION
 #====================================================================================================
 
-user_problem_statement: "PSPD Guardian chatbot with Django 5, Ollama LLM, Qdrant vector DB, PostgreSQL. Full-stack RAG pipeline."
+user_problem_statement: "FRDS FRDS chatbot with Django 5, Ollama LLM, Qdrant vector DB, PostgreSQL. Full-stack RAG pipeline."
 backend:
   - task: "Health check endpoint GET /api/"
     implemented: true
@@ -201,7 +201,7 @@ backend:
     status_history:
         - working: true
           agent: "main"
-          comment: "Full RAG pipeline - Qdrant search + LLM fallback response. Correctly finds relevant Guardian incidents."
+          comment: "Full RAG pipeline - Qdrant search + LLM fallback response. Correctly finds relevant FRDS incidents."
         - working: true
           agent: "testing"
           comment: "✅ PASSED - RAG pipeline working perfectly. Tested both new session creation and existing session messaging. Bot responses include relevant sources from Qdrant vector search. All integrations (Ollama LLM, Qdrant DB, PostgreSQL) functioning correctly."
@@ -228,7 +228,7 @@ backend:
     status_history:
         - working: true
           agent: "main"
-          comment: "Ingested 12 Guardian incident documents into Qdrant"
+          comment: "Ingested 12 FRDS incident documents into Qdrant"
 
 frontend:
   - task: "Chat interface with real backend integration"

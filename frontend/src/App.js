@@ -256,8 +256,8 @@ const ChatApp = () => {
           showFeedback: m.message_type === "bot",
           rating: m.rating,
           sources: m.sources || [],
-          link: m.text.includes("pspd-guardian-help-dev.cbp.dhs.gov")
-            ? "https://pspd-guardian-help-dev.cbp.dhs.gov"
+          link: m.text.includes("pspd-frds-help-dev.cbp.dhs.gov")
+            ? "https://pspd-frds-help-dev.cbp.dhs.gov"
             : null,
         }))
       );

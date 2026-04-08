@@ -9,7 +9,7 @@ set -e
 # ---------------------------------------------------------------------------
 BACKEND_URL="${REACT_APP_BACKEND_URL:-http://localhost:8001}"
 
-echo "PSPD Guardian Frontend — Injecting BACKEND_URL: ${BACKEND_URL}"
+echo "PSPD FRDS Frontend — Injecting BACKEND_URL: ${BACKEND_URL}"
 
 # Replace the placeholder in all JS bundles
 find /usr/share/nginx/html/static/js -name '*.js' -exec \

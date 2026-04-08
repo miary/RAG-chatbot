@@ -15,14 +15,14 @@ const SubHeader = ({ serviceAuth, connectionStatus, onClearChat }) => {
         <span className="text-[#6893ff] text-xs">{serviceAuth.label}</span>
       </div>
 
-      {/* Guardian Support Chat Bar */}
+      {/* FRDS Support Chat Bar */}
       <div
         className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#d7d7d7]/10"
         style={{ backgroundColor: '#0f1d35' }}
       >
         <div className="min-w-0">
-          <h2 className="text-white text-base font-bold leading-tight">Guardian Support Chat</h2>
-          <p className="text-white/60 text-xs mt-0.5">Ask questions about Guardian incidents and solutions</p>
+          <h2 className="text-white text-base font-bold leading-tight">FRDS Support Chat</h2>
+          <p className="text-white/60 text-xs mt-0.5">Ask questions about FRDS incidents and solutions</p>
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">

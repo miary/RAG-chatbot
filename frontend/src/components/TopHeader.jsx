@@ -38,7 +38,7 @@ const TopHeader = ({ onToggleSidebar }) => {
         </div>
 
         <span className="text-white text-base font-semibold tracking-wide">
-          PSPD Guardian
+          FRDS
         </span>
       </div>
 

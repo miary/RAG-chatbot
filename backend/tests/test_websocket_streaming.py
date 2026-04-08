@@ -164,7 +164,7 @@ class TestWebSocketStreaming:
             # Send chat message
             ws.send(json.dumps({
                 'type': 'chat_message',
-                'message': 'What is PSPD Guardian?'
+                'message': 'What is PSPD FRDS?'
             }))
             
             # Collect messages

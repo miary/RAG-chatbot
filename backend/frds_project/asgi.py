@@ -1,5 +1,5 @@
 """
-ASGI config for guardian_project project.
+ASGI config for frds_project project.
 
 It exposes the ASGI callable as a module-level variable named ``application``.
 
@@ -13,7 +13,7 @@ from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "guardian_project.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "frds_project.settings")
 
 # Initialize Django ASGI application early to ensure the AppRegistry
 # is populated before importing code that may import ORM models.
