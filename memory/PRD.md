@@ -1,7 +1,7 @@
-# FRDS FRDS - Product Requirements Document
+# FRDS - Product Requirements Document
 
 ## Original Problem Statement
-Build a responsive, mobile-friendly chatbot interface based on Axure prototypes, implementing a full-stack RAG (Retrieval-Augmented Generation) backend for technical incident support.
+Build a responsive, mobile-friendly chatbot interface implementing a full-stack RAG (Retrieval-Augmented Generation) backend for technical incident support.
 
 ## User Personas
 - **Operations Teams**: Need rapid diagnosis and resolution of system incidents
@@ -10,94 +10,72 @@ Build a responsive, mobile-friendly chatbot interface based on Axure prototypes,
 
 ## Core Requirements
 
-### Phase 1: UI Clone (COMPLETED)
-- Pixel-perfect frontend clone of Axure prototypes
-- Dark-themed responsive chat interface
-- Sidebar with chat history
-- Service status indicators
+### Phase 1-7: COMPLETED
+- UI Clone with dark-themed responsive chat interface
+- Full-Stack RAG Backend with Django 5.2, PostgreSQL, Qdrant
+- Docker Compose orchestration and documentation
+- Analytics Dashboard with Usage Metrics & RAG Performance tabs
+- 5-Star Rating System
+- WebSocket Streaming
 
-### Phase 2: Full-Stack RAG Backend (COMPLETED)
-- Django 5.2 backend with REST API
-- PostgreSQL for session/message storage
-- Qdrant for vector similarity search
-- Remote Ollama for LLM and embeddings
-- 12 pre-authored incident documents
-
-### Phase 3: DevOps & Documentation (COMPLETED)
-- Docker Compose orchestration
-- Comprehensive README.md
-- Makefile for common commands
-- .gitignore configuration
-
-### Phase 4: Tech Stack Upgrade (COMPLETED)
-- Django 5.2
-- nomic-embed-text embeddings via Ollama
-- Qdrant latest version
-
-### Phase 5: Analytics Dashboard (COMPLETED - March 23, 2026)
-- Two-tab dashboard: Usage Metrics & RAG Performance
-- Summary statistics cards
-- Time-series charts (messages, latencies)
-- Distribution visualizations (ratings, scores, latency buckets)
-
-### Phase 6: Remote Qdrant Configuration (COMPLETED - March 23, 2026)
-- Changed from local Qdrant to remote instance at 148.230.92.74:6333
-- Updated docker-compose.yml (removed local qdrant service)
-- Updated environment variables and documentation
-
-### Phase 7: 5-Star Rating System (COMPLETED - March 23, 2026)
-- Replaced thumbs up/down feedback with 5-star rating (1-5)
-- Database migration: removed `feedback` field, added `rating` IntegerField
-- Updated analytics to show rating distribution and average rating
-- Interactive star rating UI with hover effects
+### Phase 8: Local Embedding Models (COMPLETED - March 23, 2026)
+- Switched from remote Ollama embeddings to local models
+- Dense model: all-MiniLM-L6-v2 (sentence-transformers)
+- Sparse model: SPLADE (naver/splade-cocondenser-ensembledistil)
+- Hybrid search with Reciprocal Rank Fusion (RRF)
+- Models pre-downloaded to `./models` directory
 
 ## Architecture
 
 ```
 Frontend (React 19) → Nginx Proxy → Django 5.2 Backend
                                          ↓
-                           ┌─────────────┼─────────────┐
-                           ↓             ↓             ↓
-                     PostgreSQL    Remote Qdrant   Remote Ollama
-                     (sessions)   (148.230.92.74)  (31.220.21.156)
+                    ┌────────────────────┼────────────────────┐
+                    ↓                    ↓                    ↓
+              PostgreSQL            Qdrant               Remote Ollama
+              (sessions)          (vectors)             (LLM only)
+                    ↑
+              Local Models (./models)
+              - Dense: all-MiniLM-L6-v2
+              - Sparse: SPLADE
 ```
 
-## API Endpoints
-- `GET /api/` - Health check
-- `GET /api/status/` - Service connectivity status
-- `GET/POST /api/sessions/` - List/create sessions
-- `GET/DELETE /api/sessions/<id>/` - Session detail/delete
-- `DELETE /api/sessions/<id>/clear/` - Clear messages
-- `POST /api/chat/` - Send message (RAG + LLM)
-- `PATCH /api/messages/<id>/feedback/` - Update rating (1-5 stars)
-- `POST /api/ingest/` - Ingest documents
-- `GET /api/analytics/usage/` - Usage analytics with rating distribution
-- `GET /api/analytics/rag/` - RAG performance analytics
-
 ## Key Technical Details
-- **Embedding Model**: nomic-embed-text with MRL (truncated from 768 to 256 dimensions)
-- **LLM Model**: llama3.1:8b
-- **Vector DB**: Qdrant (remote at 148.230.92.74:6333)
+- **Dense Embedding**: all-MiniLM-L6-v2 with MRL (384→256 dimensions)
+- **Sparse Embedding**: SPLADE for keyword matching
+- **Hybrid Search**: RRF fusion of dense + sparse results
+- **LLM Model**: llama3.1:8b (remote Ollama)
+- **Vector DB**: Qdrant (containerized)
 - **Knowledge Base**: 12 FRDS incident documents
-- **Rating System**: 5-star scale (1-5), stored as IntegerField
-- **WebSocket Streaming**: Real-time response streaming via Django Channels
+- **Rating System**: 5-star scale (1-5)
 
-## Database Schema
-- `chat_chatsession`: id (uuid), title, created_at, updated_at
-- `chat_chatmessage`: id (uuid), session (fk), message_type, text, timestamp, rating (int 1-5, nullable), sources (json), rag_latency_ms, llm_latency_ms, total_latency_ms, top_rag_score
+## Local Models Setup
+```bash
+# Download models before Docker deployment
+python download_models.py
 
-## Vector Database (Qdrant)
-- **Collection**: `frds_incidents`
-- **Dimensions**: 256 (MRL truncated from 768)
-- **Distance**: Cosine similarity
-- **MRL Benefits**: ~3x faster search, ~3x less memory, minimal quality loss
+# Models saved to:
+# - models/dense/   (all-MiniLM-L6-v2, ~90MB)
+# - models/sparse/  (SPLADE, ~400MB)
+```
+
+## Docker Deployment
+```bash
+# 1. Download models
+python download_models.py
+
+# 2. Start services
+docker compose up -d
+
+# 3. View logs
+docker compose logs -f backend
+```
 
 ## Status: COMPLETED
-All phases implemented and tested. Application is production-ready.
+All phases implemented. Application ready for production deployment with local embedding models.
 
 ## Future Enhancements (Backlog)
-1. **User Authentication**: Add login/registration for personalized sessions
-2. **Knowledge Base Management**: Admin UI for adding/editing documents
-3. **Export Features**: Export chat history, analytics reports
-4. **Real-time Updates**: WebSocket for live message streaming
-5. **Multi-language Support**: i18n for different locales
+1. User Authentication
+2. Knowledge Base Management UI
+3. Export Features
+4. Multi-language Support

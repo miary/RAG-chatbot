@@ -1,4 +1,4 @@
-# FRDS FRDS — AI-Powered Incident Support Chatbot
+# FRDS — AI-Powered Incident Support Chatbot
 
 ## Table of Contents
 
@@ -23,21 +23,23 @@
 
 ## 1. Project Overview
 
-**FRDS FRDS** is a full-stack, AI-powered technical support chatbot designed to help operations teams rapidly diagnose and resolve system incidents. It combines a **Retrieval-Augmented Generation (RAG)** pipeline with a **large language model (LLM)** to deliver contextually accurate, actionable troubleshooting guidance drawn from a curated knowledge base of historical FRDS system incidents.
+**FRDS** is a full-stack, AI-powered technical support chatbot designed to help operations teams rapidly diagnose and resolve system incidents. It combines a **Retrieval-Augmented Generation (RAG)** pipeline with a **large language model (LLM)** to deliver contextually accurate, actionable troubleshooting guidance drawn from a curated knowledge base of historical FRDS system incidents.
 
-The application presents a dark-themed, responsive chat interface — faithfully cloned from the original FRDS FRDS Axure prototype — where users can ask natural-language questions about technical issues, error codes, and troubleshooting procedures. The system semantically searches its vector database for the most relevant incident documentation, then feeds that context to the LLM to synthesize a clear, human-readable answer.
+The application presents a dark-themed, responsive chat interface where users can ask natural-language questions about technical issues, error codes, and troubleshooting procedures. The system uses **hybrid search** (dense + sparse vectors) to find the most relevant incident documentation, then feeds that context to the LLM to synthesize a clear, human-readable answer.
 
 ### Key Capabilities
 
 | Capability | Description |
 |---|---|
-| **Semantic Search** | Cosine-similarity search over 768-dimensional embeddings (nomic-embed-text) stored in Qdrant |
+| **Hybrid Search** | Combines dense embeddings (all-MiniLM-L6-v2 with MRL) and sparse embeddings (SPLADE) using reciprocal rank fusion |
+| **Local Embedding Models** | Pre-downloaded models stored in `./models` directory for offline deployment |
 | **LLM Response Generation** | Ollama-hosted Llama 3.1 (8B) with system-prompt engineering and RAG context injection |
+| **WebSocket Streaming** | Real-time response streaming for better user experience |
 | **Multi-Turn Conversations** | Persistent sessions stored in PostgreSQL, enabling follow-up questions within the same context |
-| **Feedback Collection** | Thumbs-up / thumbs-down per bot message, stored in the database for quality monitoring |
+| **5-Star Rating System** | Users can rate bot responses from 1-5 stars for quality monitoring |
 | **Real-Time Service Monitoring** | Live health checks for Ollama, Qdrant, and PostgreSQL displayed in the UI |
 | **Graceful Degradation** | Deterministic RAG-context fallback when the LLM is unreachable |
-| **Responsive Design** | Pixel-perfect dark UI for desktop, tablet, and mobile with collapsible sidebar |
+| **Responsive Design** | Dark UI for desktop, tablet, and mobile with collapsible sidebar |
 
 ---
 
@@ -454,37 +456,57 @@ When a user sends a message:
 
 ## 7. RAG Pipeline — Deep Dive
 
-### 7.1 Embedding Model with Matryoshka Representation Learning (MRL)
+### 7.1 Local Embedding Models
 
+The application uses **pre-downloaded embedding models** stored in the `./models` directory for offline Docker deployment:
+
+**Dense Model (Sentence-Transformers):**
 | Property | Value |
 |---|---|
-| Model | `nomic-embed-text` (hosted on Ollama) |
-| Full Dimensions | 768 |
+| Model | `all-MiniLM-L6-v2` |
+| Full Dimensions | 384 |
 | **MRL Dimensions** | **256** (truncated and normalized) |
-| Max Sequence Length | 8192 tokens |
-| Architecture | Nomic AI's text embedding model with Matryoshka representation |
-| Hosting | Remote Ollama server (same as LLM — no local model download required) |
-| Inference Speed | ~10–50ms per query (network round-trip to Ollama) |
+| Location | `./models/dense/` |
+| Inference | Local CPU/GPU via sentence-transformers |
 
-**Matryoshka Representation Learning (MRL):**
-The `nomic-embed-text` model is trained with MRL, meaning the first N dimensions of the embedding capture the most important semantic information. We truncate the 768-dim vectors to 256 dimensions and re-normalize for cosine similarity, achieving:
-- **~3x faster** similarity search
-- **~3x less** memory usage in Qdrant
-- **Minimal quality loss** — the most important semantic features are preserved in the first 256 dimensions
+**Sparse Model (SPLADE):**
+| Property | Value |
+|---|---|
+| Model | `naver/splade-cocondenser-ensembledistil` |
+| Type | Sparse embeddings for keyword matching |
+| Location | `./models/sparse/` |
+| Inference | Local via transformers library |
 
-### 7.2 Vector Database Configuration
+**Downloading Models:**
+```bash
+# Run before first Docker deployment
+python download_models.py
+```
+
+This downloads both models to `./models/` directory (~500MB total).
+
+### 7.2 Hybrid Search
+
+The RAG pipeline uses **hybrid search** combining dense and sparse vectors:
+
+1. **Dense Search**: Semantic similarity using MRL-truncated embeddings
+2. **Sparse Search**: Keyword matching using SPLADE embeddings
+3. **Fusion**: Reciprocal Rank Fusion (RRF) combines both result sets
+
+This provides better retrieval quality than either method alone.
+
+### 7.3 Vector Database Configuration
 
 | Property | Value |
 |---|---|
-| Engine | Qdrant (Remote Instance) |
-| Host | `148.230.92.74` |
+| Engine | Qdrant (containerized or remote) |
 | Collection Name | `frds_incidents` |
-| Vector Size | **256** (MRL truncated) |
+| Dense Vector Size | **256** (MRL truncated) |
+| Sparse Vectors | SPLADE (variable length) |
 | Distance Metric | Cosine Similarity |
 | Documents Stored | 12 |
-| API Port | 6333 (HTTP), 6334 (gRPC) |
 
-### 7.3 Search Parameters
+### 7.4 Search Parameters
 
 | Parameter | Value | Description |
 |---|---|---|

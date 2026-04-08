@@ -142,3 +142,4 @@ htmlcov/
 # Environment files
 *.env
 *.env.*
+models/sparse/model.safetensors
