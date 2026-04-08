@@ -456,18 +456,24 @@ When a user sends a message:
 
 ## 7. RAG Pipeline — Deep Dive
 
-### 7.1 Local Embedding Models
+### 7.1 Local Embedding Models with Matryoshka (MRL)
 
 The application uses **pre-downloaded embedding models** stored in the `./models` directory for offline Docker deployment:
 
-**Dense Model (Sentence-Transformers):**
+**Dense Model (nomic-embed-text with MRL):**
 | Property | Value |
 |---|---|
-| Model | `all-MiniLM-L6-v2` |
-| Full Dimensions | 384 |
+| Model | `nomic-ai/nomic-embed-text-v1.5` |
+| Full Dimensions | 768 |
 | **MRL Dimensions** | **256** (truncated and normalized) |
 | Location | `./models/dense/` |
 | Inference | Local CPU/GPU via sentence-transformers |
+
+**Matryoshka Representation Learning (MRL):**
+nomic-embed-text is trained with MRL, meaning the first N dimensions capture the most important semantic information. We truncate the 768-dim vectors to 256 dimensions and re-normalize, achieving:
+- **~3x faster** similarity search
+- **~3x less** memory usage
+- **Minimal quality loss** - semantic features preserved in first 256 dims
 
 **Sparse Model (SPLADE):**
 | Property | Value |
@@ -483,13 +489,13 @@ The application uses **pre-downloaded embedding models** stored in the `./models
 python download_models.py
 ```
 
-This downloads both models to `./models/` directory (~500MB total).
+This downloads both models to `./models/` directory (~600MB total).
 
 ### 7.2 Hybrid Search
 
 The RAG pipeline uses **hybrid search** combining dense and sparse vectors:
 
-1. **Dense Search**: Semantic similarity using MRL-truncated embeddings
+1. **Dense Search**: Semantic similarity using MRL-truncated nomic-embed-text (256d)
 2. **Sparse Search**: Keyword matching using SPLADE embeddings
 3. **Fusion**: Reciprocal Rank Fusion (RRF) combines both result sets
 
@@ -501,7 +507,7 @@ This provides better retrieval quality than either method alone.
 |---|---|
 | Engine | Qdrant (containerized or remote) |
 | Collection Name | `frds_incidents` |
-| Dense Vector Size | **256** (MRL truncated) |
+| Dense Vector Size | **256** (MRL truncated from 768) |
 | Sparse Vectors | SPLADE (variable length) |
 | Distance Metric | Cosine Similarity |
 | Documents Stored | 12 |

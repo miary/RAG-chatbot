@@ -143,3 +143,8 @@ htmlcov/
 *.env
 *.env.*
 models/sparse/model.safetensors
+-e 
+# Environment files
+*.env
+*.env.*
+models/dense/model.safetensors

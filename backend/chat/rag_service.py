@@ -28,12 +28,14 @@ _qdrant_client = None
 
 # Model paths - loaded from local 'models' directory
 MODELS_DIR = os.environ.get('MODELS_DIR', '/app/models')
-DENSE_MODEL_PATH = os.path.join(MODELS_DIR, 'dense')   # e.g., all-MiniLM-L6-v2 or nomic-embed-text
-SPARSE_MODEL_PATH = os.path.join(MODELS_DIR, 'sparse')  # e.g., splade-cocondenser-ensembledistil
+DENSE_MODEL_PATH = os.path.join(MODELS_DIR, 'dense')   # nomic-embed-text (768d, MRL-trained)
+SPARSE_MODEL_PATH = os.path.join(MODELS_DIR, 'sparse')  # splade-cocondenser-ensembledistil
 
-# Embedding dimensions
-DENSE_EMBEDDING_DIM = int(os.environ.get('DENSE_EMBEDDING_DIM', '384'))  # Default for all-MiniLM-L6-v2
-MRL_EMBEDDING_DIM = int(os.environ.get('MRL_EMBEDDING_DIM', '256'))      # MRL truncation target
+# Embedding dimensions for nomic-embed-text with Matryoshka (MRL)
+# nomic-embed-text produces 768-dimensional vectors but is trained with MRL
+# allowing truncation to smaller dimensions (256, 128, 64) with minimal quality loss
+DENSE_EMBEDDING_DIM = int(os.environ.get('DENSE_EMBEDDING_DIM', '768'))  # Full dimension from nomic-embed-text
+MRL_EMBEDDING_DIM = int(os.environ.get('MRL_EMBEDDING_DIM', '256'))      # Matryoshka truncation target
 USE_MRL = os.environ.get('USE_MRL', 'true').lower() == 'true'
 
 # Final dimension used in Qdrant
@@ -41,21 +43,31 @@ EMBEDDING_DIM = MRL_EMBEDDING_DIM if USE_MRL else DENSE_EMBEDDING_DIM
 
 
 def get_dense_model():
-    """Load the dense embedding model from local directory."""
+    """Load the nomic-embed-text dense embedding model from local directory.
+    
+    nomic-embed-text is trained with Matryoshka Representation Learning (MRL),
+    which means the first N dimensions of the embedding capture the most important
+    semantic information. This allows truncation to 256 dimensions with minimal
+    quality loss.
+    """
     global _dense_model
     if _dense_model is None:
         from sentence_transformers import SentenceTransformer
         
         if os.path.exists(DENSE_MODEL_PATH):
-            logger.info('Loading dense model from local path: %s', DENSE_MODEL_PATH)
-            _dense_model = SentenceTransformer(DENSE_MODEL_PATH)
+            logger.info('Loading nomic-embed-text from local path: %s', DENSE_MODEL_PATH)
+            _dense_model = SentenceTransformer(DENSE_MODEL_PATH, trust_remote_code=True)
         else:
             # Fallback: try to load by name (will download if not exists)
-            model_name = os.environ.get('DENSE_MODEL_NAME', 'all-MiniLM-L6-v2')
+            model_name = os.environ.get('DENSE_MODEL_NAME', 'nomic-ai/nomic-embed-text-v1.5')
             logger.warning('Local dense model not found at %s, loading: %s', DENSE_MODEL_PATH, model_name)
-            _dense_model = SentenceTransformer(model_name)
+            _dense_model = SentenceTransformer(model_name, trust_remote_code=True)
         
-        logger.info('Dense model loaded. Embedding dimension: %d', _dense_model.get_sentence_embedding_dimension())
+        full_dim = _dense_model.get_sentence_embedding_dimension()
+        logger.info(
+            'nomic-embed-text loaded. Full dim: %d, MRL truncated dim: %d',
+            full_dim, MRL_EMBEDDING_DIM
+        )
     return _dense_model
 
 
