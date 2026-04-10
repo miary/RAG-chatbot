@@ -148,3 +148,7 @@ models/sparse/model.safetensors
 *.env
 *.env.*
 models/dense/model.safetensors
+-e 
+# Environment files
+*.env
+*.env.*
