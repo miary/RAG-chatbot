@@ -75,10 +75,8 @@ services:
     container_name: cbp-backend
     restart: unless-stopped
     depends_on:
-      postgres:
-        condition: service_healthy
-      qdrant:
-        condition: service_started
+      - postgres
+      - qdrant
     environment:
       # Django
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-change-me-in-production-use-a-long-random-string}
