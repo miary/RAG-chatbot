@@ -9,7 +9,7 @@
 #   5. nginx        — Reverse proxy (unified entry point)
 #
 # Local models (pre-downloaded via FastEmbed, mounted from ./models):
-#   - Dense model:  nomic-embed-text-v1.5 (768d -> 256d MRL)
+#   - Dense model:  nomic-embed-text-v1.5-Q (quantized, 768d -> 256d MRL)
 #   - Sparse model: Qdrant/bm25 for hybrid search
 #
 # External dependencies:
@@ -54,7 +54,7 @@ services:
   # Qdrant — Vector Database (Local Instance)
   # -------------------------------------------------------------------------
   qdrant:
-    image: qdrant/qdrant:v1.17.0
+    image: qdrant/qdrant:v1.13.2
     container_name: cbp-qdrant
     restart: unless-stopped
     ports:
@@ -97,10 +97,10 @@ services:
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-cbp_training}
 
       # Local embedding models via FastEmbed (mounted from ./models)
-      # Dense: nomic-ai/nomic-embed-text-v1.5 (768d -> 256d via MRL)
+      # Dense: nomic-ai/nomic-embed-text-v1.5-Q (768d -> 256d via MRL, quantized)
       # Sparse: Qdrant/bm25 for hybrid search
       MODELS_DIR: /app/models
-      DENSE_MODEL_NAME: ${DENSE_MODEL_NAME:-nomic-ai/nomic-embed-text-v1.5}
+      DENSE_MODEL_NAME: ${DENSE_MODEL_NAME:-nomic-ai/nomic-embed-text-v1.5-Q}
       SPARSE_MODEL_NAME: ${SPARSE_MODEL_NAME:-Qdrant/bm25}
       DENSE_EMBEDDING_DIM: ${DENSE_EMBEDDING_DIM:-768}
       MRL_EMBEDDING_DIM: ${MRL_EMBEDDING_DIM:-256}
