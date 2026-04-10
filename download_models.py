@@ -5,7 +5,7 @@ Download embedding models for local deployment using Qdrant FastEmbed.
 This script downloads both dense and sparse models to the 'models' directory
 for offline use in Docker deployment.
 
-Dense Model: nomic-ai/nomic-embed-text-v1.5 (768 dimensions, MRL-trained)
+Dense Model: nomic-ai/nomic-embed-text-v1.5 (768 dimensions, MRL-trained, ~547MB)
 Sparse Model: Qdrant/bm25 (BM25-based sparse embeddings)
 
 Usage:
@@ -22,8 +22,8 @@ import shutil
 # Models directory - this will be the FastEmbed cache directory
 MODELS_DIR = os.environ.get('MODELS_DIR', 'models')
 
-# Model names - using quantized version for smaller size and faster inference
-DENSE_MODEL_NAME = os.environ.get('DENSE_MODEL_NAME', 'nomic-ai/nomic-embed-text-v1.5-Q')
+# Model names - using full precision model for best accuracy
+DENSE_MODEL_NAME = os.environ.get('DENSE_MODEL_NAME', 'nomic-ai/nomic-embed-text-v1.5')
 SPARSE_MODEL_NAME = os.environ.get('SPARSE_MODEL_NAME', 'Qdrant/bm25')
 
 
