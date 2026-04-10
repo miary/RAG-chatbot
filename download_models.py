@@ -1,94 +1,113 @@
 #!/usr/bin/env python3
 """
-Download embedding models for local deployment.
+Download embedding models for local deployment using Qdrant FastEmbed.
 
 This script downloads both dense and sparse models to the 'models' directory
 for offline use in Docker deployment.
 
-Dense Model: nomic-ai/nomic-embed-text-v1.5 (768 dimensions, MRL-trained, truncated to 256)
-Sparse Model: naver/splade-cocondenser-ensembledistil (for hybrid search)
+Dense Model: nomic-ai/nomic-embed-text-v1.5-Q (768 dimensions, MRL-trained, quantized, truncated to 256)
+Sparse Model: Qdrant/bm25 (BM25-based sparse embeddings)
 
 Usage:
+    pip install fastembed
     python download_models.py
 
 The models will be saved to:
-    - models/dense/
-    - models/sparse/
+    - models/  (FastEmbed cache structure with nomic-embed-text-Q and BM25)
 """
 
 import os
 import sys
 
-def download_dense_model():
-    """Download the nomic-embed-text dense embedding model."""
-    from sentence_transformers import SentenceTransformer
-    
-    # nomic-embed-text is MRL-trained and supports truncation to 256 dims
-    model_name = os.environ.get('DENSE_MODEL_NAME', 'nomic-ai/nomic-embed-text-v1.5')
-    output_path = os.environ.get('DENSE_MODEL_PATH', 'models/dense')
-    
-    print(f"Downloading dense model: {model_name}")
-    print("  (This model is trained with Matryoshka Representation Learning)")
-    
-    # nomic-embed-text requires trust_remote_code=True
-    model = SentenceTransformer(model_name, trust_remote_code=True)
-    
-    print(f"Saving to: {output_path}")
-    model.save(output_path)
-    
-    dim = model.get_sentence_embedding_dimension()
-    print(f"Dense model saved. Full dimensions: {dim} (will be truncated to 256 via MRL)")
-    return dim
+# Models directory
+MODELS_DIR = os.environ.get('MODELS_DIR', 'models')
+
+# Model names
+DENSE_MODEL_NAME = "nomic-ai/nomic-embed-text-v1.5-Q"
+SPARSE_MODEL_NAME = "Qdrant/bm25"
 
 
-def download_sparse_model():
-    """Download the sparse embedding model (SPLADE)."""
-    from transformers import AutoModelForMaskedLM, AutoTokenizer
+def download_models():
+    """Download both dense and sparse embedding models using FastEmbed."""
+    from fastembed import TextEmbedding, SparseTextEmbedding
     
-    model_name = os.environ.get('SPARSE_MODEL_NAME', 'naver/splade-cocondenser-ensembledistil')
-    output_path = os.environ.get('SPARSE_MODEL_PATH', 'models/sparse')
+    os.makedirs(MODELS_DIR, exist_ok=True)
     
-    print(f"Downloading sparse model: {model_name}")
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForMaskedLM.from_pretrained(model_name)
+    print(f"Downloading dense model: {DENSE_MODEL_NAME}")
+    print("  (Quantized nomic-embed-text with MRL support)")
+    print("  (768-dimensional vectors, truncatable to 256)")
     
-    print(f"Saving to: {output_path}")
-    tokenizer.save_pretrained(output_path)
-    model.save_pretrained(output_path)
+    dense = TextEmbedding(
+        model_name=DENSE_MODEL_NAME,
+        cache_dir=MODELS_DIR,
+    )
     
-    print("Sparse model (SPLADE) saved successfully.")
+    # Test embedding
+    test_emb = list(dense.embed(["test"]))[0]
+    dense_dim = len(test_emb)
+    print(f"  Dense model loaded: {dense_dim} dimensions")
+    
+    print(f"\nDownloading sparse model: {SPARSE_MODEL_NAME}")
+    print("  (BM25-based sparse embeddings for keyword matching)")
+    
+    sparse = SparseTextEmbedding(
+        model_name=SPARSE_MODEL_NAME,
+        cache_dir=MODELS_DIR,
+    )
+    
+    # Test embedding
+    test_sparse = list(sparse.embed(["test query"]))[0]
+    print(f"  Sparse model loaded: {len(test_sparse.indices)} test indices")
+    
+    return dense_dim
+
+
+def list_supported_models():
+    """List all supported models in FastEmbed."""
+    from fastembed import TextEmbedding, SparseTextEmbedding
+    
+    print("\n--- Supported Dense Models ---")
+    for model in TextEmbedding.list_supported_models():
+        if 'nomic' in model['model'].lower():
+            print(f"  {model['model']} (dim: {model.get('dim', 'N/A')}, size: {model.get('size_in_GB', 'N/A')}GB)")
+    
+    print("\n--- Supported Sparse Models ---")
+    for model in SparseTextEmbedding.list_supported_models():
+        print(f"  {model['model']}")
 
 
 def main():
-    print("=" * 60)
-    print("FRDS Embedding Models Downloader")
-    print("=" * 60)
-    
-    # Create output directories
-    os.makedirs('models/dense', exist_ok=True)
-    os.makedirs('models/sparse', exist_ok=True)
+    print("=" * 70)
+    print("FRDS Embedding Models Downloader (FastEmbed)")
+    print("=" * 70)
     
     try:
-        # Download dense model
-        print("\n[1/2] Downloading Dense Embedding Model (nomic-embed-text)...")
-        dense_dim = download_dense_model()
+        # Optionally list supported models
+        if '--list' in sys.argv:
+            list_supported_models()
+            return
         
-        # Download sparse model
-        print("\n[2/2] Downloading Sparse Embedding Model (SPLADE)...")
-        download_sparse_model()
+        # Download models
+        print(f"\nDownloading models to: {MODELS_DIR}/")
+        print("-" * 50)
+        dense_dim = download_models()
         
-        print("\n" + "=" * 60)
-        print("SUCCESS! All models downloaded.")
-        print("=" * 60)
+        print("\n" + "=" * 70)
+        print("SUCCESS! All models downloaded using FastEmbed.")
+        print("=" * 70)
         print(f"\nModel locations:")
-        print(f"  Dense:  models/dense/  (nomic-embed-text, {dense_dim}d -> 256d MRL)")
-        print(f"  Sparse: models/sparse/ (SPLADE)")
+        print(f"  Cache directory: {MODELS_DIR}/")
+        print(f"  Dense:  {DENSE_MODEL_NAME} ({dense_dim}d -> 256d MRL)")
+        print(f"  Sparse: {SPARSE_MODEL_NAME}")
         print(f"\nMatryoshka Representation Learning (MRL):")
         print(f"  - nomic-embed-text is trained with MRL")
         print(f"  - Full dimension: {dense_dim}")
         print(f"  - Truncated to: 256 (first 256 dims preserve semantics)")
+        print(f"\nBM25 Sparse Embeddings:")
+        print(f"  - Fast keyword-based matching")
+        print(f"  - Hybrid search with dense vectors for best results")
         print(f"\nNext steps:")
-        print(f"  1. Copy 'models' directory to your deployment environment")
+        print(f"  1. Set MODELS_DIR environment variable to '{os.path.abspath(MODELS_DIR)}'")
         print(f"  2. Run: docker compose up -d")
         
     except Exception as e:

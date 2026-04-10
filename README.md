@@ -31,8 +31,8 @@ The application presents a dark-themed, responsive chat interface where users ca
 
 | Capability | Description |
 |---|---|
-| **Hybrid Search** | Combines dense embeddings (all-MiniLM-L6-v2 with MRL) and sparse embeddings (SPLADE) using reciprocal rank fusion |
-| **Local Embedding Models** | Pre-downloaded models stored in `./models` directory for offline deployment |
+| **Hybrid Search** | Combines dense embeddings (nomic-embed-text-v1.5-Q with MRL) and sparse embeddings (BM25) using reciprocal rank fusion |
+| **Local Embedding Models** | Pre-downloaded models via Qdrant FastEmbed stored in `./models` directory for offline deployment |
 | **LLM Response Generation** | Ollama-hosted Llama 3.1 (8B) with system-prompt engineering and RAG context injection |
 | **WebSocket Streaming** | Real-time response streaming for better user experience |
 | **Multi-Turn Conversations** | Persistent sessions stored in PostgreSQL, enabling follow-up questions within the same context |
@@ -146,9 +146,11 @@ Accessible via the bar chart icon in the top header or by navigating to `/dashbo
 
 | Technology | Version | Purpose |
 |---|---|---|
-| **Ollama** (Python Client) | 0.6.1 | LLM inference and embedding client — connects to local or remote Ollama server |
+| **Qdrant FastEmbed** | 0.8.0 | Local embedding generation via ONNX |
+| **nomic-embed-text** | v1.5-Q (quantized) | 768-dimensional dense embedding model (MRL-trained) |
+| **Qdrant/bm25** | — | BM25-based sparse embeddings for keyword matching |
+| **Ollama** (Python Client) | 0.6.1 | LLM inference client — connects to remote Ollama server |
 | **Llama 3.1 8B** | `llama3.1:8b` | Large language model for response generation |
-| **nomic-embed-text** | Ollama-hosted | 768-dimensional embedding model for semantic search |
 
 ### 3.4 Databases
 
@@ -456,18 +458,18 @@ When a user sends a message:
 
 ## 7. RAG Pipeline — Deep Dive
 
-### 7.1 Local Embedding Models with Matryoshka (MRL)
+### 7.1 Local Embedding Models with Qdrant FastEmbed
 
-The application uses **pre-downloaded embedding models** stored in the `./models` directory for offline Docker deployment:
+The application uses **Qdrant FastEmbed** for local embedding generation, with models pre-downloaded to the `./models` directory for offline Docker deployment:
 
 **Dense Model (nomic-embed-text with MRL):**
 | Property | Value |
 |---|---|
-| Model | `nomic-ai/nomic-embed-text-v1.5` |
+| Model | `nomic-ai/nomic-embed-text-v1.5-Q` (quantized) |
 | Full Dimensions | 768 |
 | **MRL Dimensions** | **256** (truncated and normalized) |
-| Location | `./models/dense/` |
-| Inference | Local CPU/GPU via sentence-transformers |
+| Location | `./models/` (FastEmbed cache) |
+| Inference | Local CPU via ONNX Runtime |
 
 **Matryoshka Representation Learning (MRL):**
 nomic-embed-text is trained with MRL, meaning the first N dimensions capture the most important semantic information. We truncate the 768-dim vectors to 256 dimensions and re-normalize, achieving:
@@ -475,28 +477,29 @@ nomic-embed-text is trained with MRL, meaning the first N dimensions capture the
 - **~3x less** memory usage
 - **Minimal quality loss** - semantic features preserved in first 256 dims
 
-**Sparse Model (SPLADE):**
+**Sparse Model (BM25):**
 | Property | Value |
 |---|---|
-| Model | `naver/splade-cocondenser-ensembledistil` |
-| Type | Sparse embeddings for keyword matching |
-| Location | `./models/sparse/` |
-| Inference | Local via transformers library |
+| Model | `Qdrant/bm25` |
+| Type | BM25-based sparse embeddings for keyword matching |
+| Location | `./models/` (FastEmbed cache) |
+| Inference | Local via FastEmbed |
 
 **Downloading Models:**
 ```bash
-# Run before first Docker deployment
+# Install FastEmbed and download models
+pip install fastembed
 python download_models.py
 ```
 
-This downloads both models to `./models/` directory (~600MB total).
+This downloads both models to `./models/` directory (~150MB total for quantized models).
 
 ### 7.2 Hybrid Search
 
 The RAG pipeline uses **hybrid search** combining dense and sparse vectors:
 
 1. **Dense Search**: Semantic similarity using MRL-truncated nomic-embed-text (256d)
-2. **Sparse Search**: Keyword matching using SPLADE embeddings
+2. **Sparse Search**: Keyword matching using BM25 sparse embeddings
 3. **Fusion**: Reciprocal Rank Fusion (RRF) combines both result sets
 
 This provides better retrieval quality than either method alone.
@@ -508,7 +511,7 @@ This provides better retrieval quality than either method alone.
 | Engine | Qdrant (containerized or remote) |
 | Collection Name | `frds_incidents` |
 | Dense Vector Size | **256** (MRL truncated from 768) |
-| Sparse Vectors | SPLADE (variable length) |
+| Sparse Vectors | BM25 (variable length) |
 | Distance Metric | Cosine Similarity |
 | Documents Stored | 12 |
 

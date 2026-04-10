@@ -8,9 +8,9 @@
 #   4. frontend     — React 19 built assets served by Nginx
 #   5. nginx        — Reverse proxy (unified entry point)
 #
-# Local models (pre-downloaded, mounted from ./models):
-#   - Dense model:  models/dense/ (sentence-transformers)
-#   - Sparse model: models/sparse/ (SPLADE for hybrid search)
+# Local models (pre-downloaded via FastEmbed, mounted from ./models):
+#   - Dense model:  nomic-embed-text-v1.5-Q (768d -> 256d MRL, quantized)
+#   - Sparse model: Qdrant/bm25 for hybrid search
 #
 # External dependencies:
 #   - Ollama LLM server at OLLAMA_BASE_URL (for text generation only)
@@ -20,6 +20,9 @@
 #   2. docker compose up -d --build
 #   3. docker compose logs -f backend
 #   4. docker compose down -v
+#
+# Note: Both dense (nomic-embed-text) and sparse (BM25) models are loaded
+#       locally via Qdrant FastEmbed for offline/air-gapped deployments.
 # =============================================================================
 
 version: "3.9"
@@ -101,10 +104,12 @@ services:
       QDRANT_PORT: "6333"
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-frds_incidents}
 
-      # Local embedding models (mounted from ./models)
-      # Dense: nomic-embed-text (768d -> 256d via MRL)
-      # Sparse: SPLADE for hybrid search
+      # Local embedding models via FastEmbed (mounted from ./models)
+      # Dense: nomic-embed-text-v1.5-Q (768d -> 256d via MRL, quantized)
+      # Sparse: Qdrant/bm25 for hybrid search
       MODELS_DIR: /app/models
+      DENSE_MODEL_NAME: ${DENSE_MODEL_NAME:-nomic-ai/nomic-embed-text-v1.5-Q}
+      SPARSE_MODEL_NAME: ${SPARSE_MODEL_NAME:-Qdrant/bm25}
       DENSE_EMBEDDING_DIM: ${DENSE_EMBEDDING_DIM:-768}
       MRL_EMBEDDING_DIM: ${MRL_EMBEDDING_DIM:-256}
       USE_MRL: ${USE_MRL:-true}

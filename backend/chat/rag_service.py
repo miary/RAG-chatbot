@@ -1,7 +1,15 @@
+"""
+RAG Service using Qdrant FastEmbed for hybrid search.
+
+Dense Model: nomic-embed-text-v1.5 (768d -> 256d via MRL truncation)
+Sparse Model: Qdrant/bm25 (BM25-based sparse embeddings)
+
+Both models are loaded locally from the 'models' directory for offline deployment.
+"""
 import logging
 import math
 import os
-from typing import List
+from typing import List, Optional
 
 from django.conf import settings
 from qdrant_client import QdrantClient
@@ -11,8 +19,6 @@ from qdrant_client.models import (
     VectorParams,
     SparseVectorParams,
     SparseIndexParams,
-    NamedVector,
-    NamedSparseVector,
     SparseVector,
     Prefetch,
     FusionQuery,
@@ -28,14 +34,18 @@ _qdrant_client = None
 
 # Model paths - loaded from local 'models' directory
 MODELS_DIR = os.environ.get('MODELS_DIR', '/app/models')
-DENSE_MODEL_PATH = os.path.join(MODELS_DIR, 'dense')   # nomic-embed-text (768d, MRL-trained)
-SPARSE_MODEL_PATH = os.path.join(MODELS_DIR, 'sparse')  # splade-cocondenser-ensembledistil
+DENSE_MODEL_PATH = os.path.join(MODELS_DIR, 'dense')
+SPARSE_MODEL_PATH = os.path.join(MODELS_DIR, 'sparse')
+
+# FastEmbed model names
+DENSE_MODEL_NAME = os.environ.get('DENSE_MODEL_NAME', 'nomic-ai/nomic-embed-text-v1.5-Q')
+SPARSE_MODEL_NAME = os.environ.get('SPARSE_MODEL_NAME', 'Qdrant/bm25')
 
 # Embedding dimensions for nomic-embed-text with Matryoshka (MRL)
 # nomic-embed-text produces 768-dimensional vectors but is trained with MRL
 # allowing truncation to smaller dimensions (256, 128, 64) with minimal quality loss
-DENSE_EMBEDDING_DIM = int(os.environ.get('DENSE_EMBEDDING_DIM', '768'))  # Full dimension from nomic-embed-text
-MRL_EMBEDDING_DIM = int(os.environ.get('MRL_EMBEDDING_DIM', '256'))      # Matryoshka truncation target
+DENSE_EMBEDDING_DIM = int(os.environ.get('DENSE_EMBEDDING_DIM', '768'))
+MRL_EMBEDDING_DIM = int(os.environ.get('MRL_EMBEDDING_DIM', '256'))
 USE_MRL = os.environ.get('USE_MRL', 'true').lower() == 'true'
 
 # Final dimension used in Qdrant
@@ -43,7 +53,7 @@ EMBEDDING_DIM = MRL_EMBEDDING_DIM if USE_MRL else DENSE_EMBEDDING_DIM
 
 
 def get_dense_model():
-    """Load the nomic-embed-text dense embedding model from local directory.
+    """Load the nomic-embed-text dense embedding model using FastEmbed.
     
     nomic-embed-text is trained with Matryoshka Representation Learning (MRL),
     which means the first N dimensions of the embedding capture the most important
@@ -52,47 +62,83 @@ def get_dense_model():
     """
     global _dense_model
     if _dense_model is None:
-        from sentence_transformers import SentenceTransformer
+        from fastembed import TextEmbedding
         
-        if os.path.exists(DENSE_MODEL_PATH):
-            logger.info('Loading nomic-embed-text from local path: %s', DENSE_MODEL_PATH)
-            _dense_model = SentenceTransformer(DENSE_MODEL_PATH, trust_remote_code=True)
+        # Check if model exists locally
+        cache_location_file = os.path.join(DENSE_MODEL_PATH, 'CACHE_LOCATION.txt')
+        
+        if os.path.exists(cache_location_file):
+            # Model was downloaded to a cache directory
+            with open(cache_location_file, 'r') as f:
+                cache_info = f.read()
+            logger.info('Dense model cache info: %s', cache_info.strip())
+            # Load from the parent models directory as cache
+            _dense_model = TextEmbedding(
+                model_name=DENSE_MODEL_NAME,
+                cache_dir=MODELS_DIR,
+            )
+        elif os.path.exists(DENSE_MODEL_PATH) and any(
+            f.endswith(('.onnx', '.json')) for f in os.listdir(DENSE_MODEL_PATH) if os.path.isfile(os.path.join(DENSE_MODEL_PATH, f))
+        ):
+            # Model files exist directly in the path
+            logger.info('Loading dense model from local path: %s', DENSE_MODEL_PATH)
+            _dense_model = TextEmbedding(
+                model_name=DENSE_MODEL_NAME,
+                cache_dir=os.path.dirname(DENSE_MODEL_PATH),
+            )
         else:
-            # Fallback: try to load by name (will download if not exists)
-            model_name = os.environ.get('DENSE_MODEL_NAME', 'nomic-ai/nomic-embed-text-v1.5')
-            logger.warning('Local dense model not found at %s, loading: %s', DENSE_MODEL_PATH, model_name)
-            _dense_model = SentenceTransformer(model_name, trust_remote_code=True)
+            # Fallback: Download model (will use default cache or MODELS_DIR)
+            logger.warning('Local dense model not found, downloading: %s', DENSE_MODEL_NAME)
+            _dense_model = TextEmbedding(
+                model_name=DENSE_MODEL_NAME,
+                cache_dir=MODELS_DIR,
+            )
         
-        full_dim = _dense_model.get_sentence_embedding_dimension()
+        # Test to get dimension
+        test_emb = list(_dense_model.embed(["test"]))[0]
+        full_dim = len(test_emb)
         logger.info(
-            'nomic-embed-text loaded. Full dim: %d, MRL truncated dim: %d',
+            'nomic-embed-text loaded via FastEmbed. Full dim: %d, MRL truncated dim: %d',
             full_dim, MRL_EMBEDDING_DIM
         )
     return _dense_model
 
 
 def get_sparse_model():
-    """Load the sparse embedding model (SPLADE) from local directory."""
+    """Load the BM25 sparse embedding model using FastEmbed."""
     global _sparse_model
     if _sparse_model is None:
         try:
-            from transformers import AutoModelForMaskedLM, AutoTokenizer
-            import torch
+            from fastembed import SparseTextEmbedding
             
-            if os.path.exists(SPARSE_MODEL_PATH):
+            # Check if model exists locally
+            cache_location_file = os.path.join(SPARSE_MODEL_PATH, 'CACHE_LOCATION.txt')
+            
+            if os.path.exists(cache_location_file):
+                # Model was downloaded to a cache directory
+                with open(cache_location_file, 'r') as f:
+                    cache_info = f.read()
+                logger.info('Sparse model cache info: %s', cache_info.strip())
+                _sparse_model = SparseTextEmbedding(
+                    model_name=SPARSE_MODEL_NAME,
+                    cache_dir=MODELS_DIR,
+                )
+            elif os.path.exists(SPARSE_MODEL_PATH) and os.listdir(SPARSE_MODEL_PATH):
+                # Model files exist
                 logger.info('Loading sparse model from local path: %s', SPARSE_MODEL_PATH)
-                tokenizer = AutoTokenizer.from_pretrained(SPARSE_MODEL_PATH)
-                model = AutoModelForMaskedLM.from_pretrained(SPARSE_MODEL_PATH)
-                _sparse_model = {'tokenizer': tokenizer, 'model': model}
+                _sparse_model = SparseTextEmbedding(
+                    model_name=SPARSE_MODEL_NAME,
+                    cache_dir=os.path.dirname(SPARSE_MODEL_PATH),
+                )
             else:
-                # Fallback: try to load by name
-                model_name = os.environ.get('SPARSE_MODEL_NAME', 'naver/splade-cocondenser-ensembledistil')
-                logger.warning('Local sparse model not found at %s, loading: %s', SPARSE_MODEL_PATH, model_name)
-                tokenizer = AutoTokenizer.from_pretrained(model_name)
-                model = AutoModelForMaskedLM.from_pretrained(model_name)
-                _sparse_model = {'tokenizer': tokenizer, 'model': model}
+                # Fallback: Download model
+                logger.warning('Local sparse model not found, downloading: %s', SPARSE_MODEL_NAME)
+                _sparse_model = SparseTextEmbedding(
+                    model_name=SPARSE_MODEL_NAME,
+                    cache_dir=MODELS_DIR,
+                )
             
-            logger.info('Sparse model (SPLADE) loaded successfully.')
+            logger.info('BM25 sparse model loaded via FastEmbed.')
         except Exception as e:
             logger.warning('Failed to load sparse model: %s. Sparse search will be disabled.', e)
             _sparse_model = None
@@ -126,63 +172,58 @@ def apply_mrl(embeddings: list, target_dim: int = MRL_EMBEDDING_DIM) -> list:
 
 
 def embed_texts_dense(texts: list) -> list:
-    """Generate dense embeddings for a list of texts using local model."""
+    """Generate dense embeddings for a list of texts using FastEmbed."""
     model = get_dense_model()
-    embeddings = model.encode(texts, convert_to_numpy=True)
+    
+    # FastEmbed returns a generator, convert to list
+    embeddings = list(model.embed(texts))
     
     if USE_MRL:
         return apply_mrl(embeddings, MRL_EMBEDDING_DIM)
     else:
-        return [emb.tolist() for emb in embeddings]
+        return [emb.tolist() if hasattr(emb, 'tolist') else list(emb) for emb in embeddings]
 
 
 def embed_texts_sparse(texts: list) -> list:
-    """Generate sparse embeddings using SPLADE model."""
+    """Generate sparse embeddings using BM25 via FastEmbed."""
     sparse_model = get_sparse_model()
     if sparse_model is None:
         return [None] * len(texts)
     
-    import torch
-    
-    tokenizer = sparse_model['tokenizer']
-    model = sparse_model['model']
-    model.eval()
-    
     sparse_vectors = []
-    with torch.no_grad():
-        for text in texts:
-            inputs = tokenizer(text, return_tensors='pt', truncation=True, max_length=512)
-            outputs = model(**inputs)
-            
-            # SPLADE: log(1 + ReLU(logits)) * attention_mask
-            logits = outputs.logits
-            relu_log = torch.log1p(torch.relu(logits))
-            weighted = relu_log * inputs['attention_mask'].unsqueeze(-1)
-            
-            # Max pooling over sequence length
-            sparse_vec, _ = torch.max(weighted, dim=1)
-            sparse_vec = sparse_vec.squeeze()
-            
-            # Get non-zero indices and values
-            non_zero_mask = sparse_vec > 0
-            indices = torch.where(non_zero_mask)[0].tolist()
-            values = sparse_vec[non_zero_mask].tolist()
-            
-            sparse_vectors.append({'indices': indices, 'values': values})
+    # FastEmbed SparseTextEmbedding returns SparseEmbedding objects
+    embeddings = list(sparse_model.embed(texts))
+    
+    for emb in embeddings:
+        # FastEmbed SparseEmbedding has .indices and .values attributes
+        sparse_vectors.append({
+            'indices': emb.indices.tolist() if hasattr(emb.indices, 'tolist') else list(emb.indices),
+            'values': emb.values.tolist() if hasattr(emb.values, 'tolist') else list(emb.values),
+        })
     
     return sparse_vectors
 
 
 def embed_query_dense(query: str) -> list:
     """Generate dense embedding for a single query."""
-    embeddings = embed_texts_dense([query])
+    # nomic-embed-text recommends prefixing queries with "search_query: "
+    # and documents with "search_document: " for better retrieval
+    prefixed_query = f"search_query: {query}"
+    embeddings = embed_texts_dense([prefixed_query])
     return embeddings[0]
 
 
-def embed_query_sparse(query: str) -> dict:
+def embed_query_sparse(query: str) -> Optional[dict]:
     """Generate sparse embedding for a single query."""
     sparse_vectors = embed_texts_sparse([query])
     return sparse_vectors[0]
+
+
+def embed_document_dense(text: str) -> list:
+    """Generate dense embedding for a document (with proper prefix)."""
+    prefixed_text = f"search_document: {text}"
+    embeddings = embed_texts_dense([prefixed_text])
+    return embeddings[0]
 
 
 def get_qdrant():
@@ -202,8 +243,8 @@ def ensure_collection():
     """Create the Qdrant collection with hybrid search support (dense + sparse vectors).
     
     The collection uses:
-    - Dense vectors: For semantic similarity (MRL-truncated if enabled)
-    - Sparse vectors: For keyword matching (SPLADE)
+    - Dense vectors: For semantic similarity (MRL-truncated nomic-embed-text)
+    - Sparse vectors: For keyword matching (BM25)
     
     Both are combined using reciprocal rank fusion for hybrid search.
     """
@@ -254,7 +295,7 @@ def ensure_collection():
                 index=SparseIndexParams(on_disk=False),
             ),
         }
-        logger.info('Creating collection with hybrid search (dense + sparse vectors)')
+        logger.info('Creating collection with hybrid search (dense + BM25 sparse vectors)')
     else:
         logger.info('Creating collection with dense vectors only (sparse model not available)')
 
@@ -279,11 +320,15 @@ def ingest_documents(documents: list):
     client = get_qdrant()
     collection_name = settings.QDRANT_COLLECTION
     
-    texts = [d['content'] for d in documents]
+    # Prepare texts with document prefix for nomic-embed-text
+    texts = [f"search_document: {d['content']}" for d in documents]
     
     # Generate embeddings
     dense_embeddings = embed_texts_dense(texts)
-    sparse_embeddings = embed_texts_sparse(texts)
+    
+    # For sparse, we don't need the prefix
+    sparse_texts = [d['content'] for d in documents]
+    sparse_embeddings = embed_texts_sparse(sparse_texts)
     
     use_sparse = sparse_embeddings[0] is not None
 
@@ -314,7 +359,7 @@ def ingest_documents(documents: list):
 
 
 def search_similar(query: str, top_k: int = 3) -> List[dict]:
-    """Search using hybrid retrieval (dense + sparse) with reciprocal rank fusion.
+    """Search using hybrid retrieval (dense + BM25 sparse) with reciprocal rank fusion.
     
     If sparse model is not available, falls back to dense-only search.
     """
