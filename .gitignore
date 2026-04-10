@@ -165,3 +165,12 @@ models/dense/model.safetensors
 *.env
 *.env.*
 models/models--nomic-ai--nomic-embed-text-v1.5/blobs/b4342336debaea79de872370664b0aaeb67dea4605513d00ee236ea871a81f27
+-e 
+# Environment and credential files
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
