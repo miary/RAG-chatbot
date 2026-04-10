@@ -101,6 +101,12 @@ All phases implemented. CBP Training Assistant ready for deployment.
 
 ## Changelog
 
+### April 10, 2026 - Requirements Cleanup
+- Removed unnecessary packages (google-*, emergentintegrations, torch, transformers, etc.)
+- Reduced requirements.txt from 175 packages to ~15 essential packages
+- Fixed Docker build failure caused by emergentintegrations==0.1.0 (not on PyPI)
+- Updated both /app/backend/requirements.txt and /app/docker/requirements.txt
+
 ### April 10, 2026 - CBP Training Rebranding
 - Rebranded entire application from "FRDS" to "CBP Training Assistant"
 - Created 12 realistic CBP training modules

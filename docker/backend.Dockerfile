@@ -1,9 +1,9 @@
 # =============================================================================
-# PSPD FRDS — Backend Dockerfile
+# CBP Training Assistant — Backend Dockerfile
 # Django 5 + Daphne (ASGI) + Channels + Qdrant Client + Ollama Client
 #
-# Embeddings are generated via remote Ollama (nomic-embed-text), so there is
-# no local ML model to cache — the image stays small and fast to build.
+# Embeddings are generated locally via FastEmbed (nomic-embed-text, BM25).
+# LLM generation uses remote Ollama.
 # WebSocket streaming enabled via Django Channels.
 # =============================================================================
 FROM python:3.11-slim AS base

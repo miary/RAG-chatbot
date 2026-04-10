@@ -1,5 +1,5 @@
 # =============================================================================
-# PSPD FRDS — Frontend Dockerfile
+# CBP Training Assistant — Frontend Dockerfile
 # Multi-stage: Node build → Nginx static serve
 # =============================================================================
 
