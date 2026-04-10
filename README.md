@@ -465,7 +465,7 @@ The application uses **Qdrant FastEmbed** for local embedding generation, with m
 **Dense Model (nomic-embed-text with MRL):**
 | Property | Value |
 |---|---|
-| Model | `nomic-ai/nomic-embed-text-v1.5-Q` (quantized) |
+| Model | `nomic-ai/nomic-embed-text-v1.5` |
 | Full Dimensions | 768 |
 | **MRL Dimensions** | **256** (truncated and normalized) |
 | Location | `./models/` (FastEmbed cache) |
@@ -492,7 +492,7 @@ pip install fastembed
 python download_models.py
 ```
 
-This downloads both models to `./models/` directory (~150MB total for quantized models).
+This downloads both models to `./models/` directory (~550MB total).
 
 ### 7.2 Hybrid Search
 
@@ -509,7 +509,7 @@ This provides better retrieval quality than either method alone.
 | Property | Value |
 |---|---|
 | Engine | Qdrant (containerized or remote) |
-| Collection Name | `cbp_incidents` |
+| Collection Name | `cbp_training` |
 | Dense Vector Size | **256** (MRL truncated from 768) |
 | Sparse Vectors | BM25 (variable length) |
 | Distance Metric | Cosine Similarity |

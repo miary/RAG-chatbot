@@ -9,7 +9,7 @@
 #   5. nginx        — Reverse proxy (unified entry point)
 #
 # Local models (pre-downloaded via FastEmbed, mounted from ./models):
-#   - Dense model:  nomic-embed-text-v1.5-Q (768d -> 256d MRL, quantized)
+#   - Dense model:  nomic-embed-text-v1.5 (768d -> 256d MRL)
 #   - Sparse model: Qdrant/bm25 for hybrid search
 #
 # External dependencies:
@@ -33,31 +33,31 @@ services:
   # -------------------------------------------------------------------------
   postgres:
     image: postgres:15-alpine
-    container_name: frds-postgres
+    container_name: cbp-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${PG_DB_NAME:-frds_db}
-      POSTGRES_USER: ${PG_DB_USER:-frds_user}
-      POSTGRES_PASSWORD: ${PG_DB_PASSWORD:-frds_pass}
+      POSTGRES_DB: ${PG_DB_NAME:-cbp_db}
+      POSTGRES_USER: ${PG_DB_USER:-cbp_user}
+      POSTGRES_PASSWORD: ${PG_DB_PASSWORD:-cbp_pass}
     ports:
       - "${PG_EXTERNAL_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${PG_DB_USER:-frds_user} -d ${PG_DB_NAME:-frds_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${PG_DB_USER:-cbp_user} -d ${PG_DB_NAME:-cbp_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
     networks:
-      - frds-net
+      - cbp-net
 
   # -------------------------------------------------------------------------
   # Qdrant — Vector Database (Local Instance)
   # -------------------------------------------------------------------------
   qdrant:
     image: qdrant/qdrant:v1.17.0
-    container_name: frds-qdrant
+    container_name: cbp-qdrant
     restart: unless-stopped
     ports:
       - "${QDRANT_EXTERNAL_PORT:-6333}:6333"
@@ -65,13 +65,13 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:6333/readyz || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 15s
     networks:
-      - frds-net
+      - cbp-net
 
   # -------------------------------------------------------------------------
   # Backend — Django 5 + Daphne (ASGI) + Local Embeddings
@@ -80,7 +80,7 @@ services:
     build:
       context: .
       dockerfile: docker/backend.Dockerfile
-    container_name: frds-backend
+    container_name: cbp-backend
     restart: unless-stopped
     depends_on:
       postgres:
@@ -93,9 +93,9 @@ services:
       DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
 
       # PostgreSQL (service name = hostname inside Docker network)
-      PG_DB_NAME: ${PG_DB_NAME:-frds_db}
-      PG_DB_USER: ${PG_DB_USER:-frds_user}
-      PG_DB_PASSWORD: ${PG_DB_PASSWORD:-frds_pass}
+      PG_DB_NAME: ${PG_DB_NAME:-cbp_db}
+      PG_DB_USER: ${PG_DB_USER:-cbp_user}
+      PG_DB_PASSWORD: ${PG_DB_PASSWORD:-cbp_pass}
       PG_DB_HOST: postgres
       PG_DB_PORT: "5432"
 
@@ -105,24 +105,24 @@ services:
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-cbp_training}
 
       # Local embedding models via FastEmbed (mounted from ./models)
-      # Dense: nomic-embed-text-v1.5-Q (768d -> 256d via MRL, quantized)
+      # Dense: nomic-ai/nomic-embed-text-v1.5 (768d -> 256d via MRL)
       # Sparse: Qdrant/bm25 for hybrid search
       MODELS_DIR: /app/models
-      DENSE_MODEL_NAME: ${DENSE_MODEL_NAME:-nomic-ai/nomic-embed-text-v1.5-Q}
+      DENSE_MODEL_NAME: ${DENSE_MODEL_NAME:-nomic-ai/nomic-embed-text-v1.5}
       SPARSE_MODEL_NAME: ${SPARSE_MODEL_NAME:-Qdrant/bm25}
       DENSE_EMBEDDING_DIM: ${DENSE_EMBEDDING_DIM:-768}
       MRL_EMBEDDING_DIM: ${MRL_EMBEDDING_DIM:-256}
       USE_MRL: ${USE_MRL:-true}
 
       # Ollama (remote server - for LLM generation only)
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://31.220.21.156:11434}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
     volumes:
       - ./models:/app/models:ro
     ports:
       - "${BACKEND_EXTERNAL_PORT:-8001}:8001"
     networks:
-      - frds-net
+      - cbp-net
 
   # -------------------------------------------------------------------------
   # Frontend — React 19 + Nginx (static serve)
@@ -131,7 +131,7 @@ services:
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile
-    container_name: frds-frontend
+    container_name: cbp-frontend
     restart: unless-stopped
     depends_on:
       - backend
@@ -140,14 +140,14 @@ services:
     ports:
       - "${FRONTEND_EXTERNAL_PORT:-3000}:3000"
     networks:
-      - frds-net
+      - cbp-net
 
   # -------------------------------------------------------------------------
   # Nginx Reverse Proxy — Unified Entry Point
   # -------------------------------------------------------------------------
   nginx:
     image: nginx:1.27-alpine
-    container_name: frds-proxy
+    container_name: cbp-proxy
     restart: unless-stopped
     depends_on:
       - backend
@@ -157,7 +157,7 @@ services:
     volumes:
       - ./docker/nginx-proxy.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
-      - frds-net
+      - cbp-net
 
 # =============================================================================
 # Volumes — Persistent Data
@@ -172,5 +172,5 @@ volumes:
 # Networks
 # =============================================================================
 networks:
-  frds-net:
+  cbp-net:
     driver: bridge
