@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 @api_view(['GET'])
 def health_check(request):
     """Health / root endpoint."""
-    return Response({'message': 'PSPD FRDS API is running', 'status': 'ok'})
+    return Response({'message': 'CBP Training Assistant API is running', 'status': 'ok'})
 
 
 @api_view(['GET'])
@@ -205,16 +205,16 @@ def message_feedback(request, message_id):
 
 @api_view(['POST'])
 def ingest_data(request):
-    """Trigger ingestion of mock FRDS data into Qdrant."""
+    """Trigger ingestion of CBP training content into Qdrant."""
     from .rag_service import ensure_collection, ingest_documents
-    from .mock_data import FRDS_INCIDENTS
+    from .mock_data import CBP_TRAINING_CONTENT
 
     try:
         ensure_collection()
-        ingest_documents(FRDS_INCIDENTS)
+        ingest_documents(CBP_TRAINING_CONTENT)
         return Response({
             'status': 'success',
-            'documents_ingested': len(FRDS_INCIDENTS),
+            'documents_ingested': len(CBP_TRAINING_CONTENT),
         })
     except Exception as e:
         logger.error('Ingestion failed: %s', e)

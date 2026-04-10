@@ -1,4 +1,4 @@
-# FRDS — AI-Powered Incident Support Chatbot
+# CBP Training Assistant — AI-Powered Training Chatbot
 
 ## Table of Contents
 
@@ -11,7 +11,7 @@
 7. [RAG Pipeline — Deep Dive](#7-rag-pipeline--deep-dive)
 8. [Database Schema](#8-database-schema)
 9. [API Reference](#9-api-reference)
-10. [Knowledge Base — Ingested Documents](#10-knowledge-base--ingested-documents)
+10. [Knowledge Base — Training Content](#10-knowledge-base--training-content)
 11. [Environment Configuration](#11-environment-configuration)
 12. [Docker Deployment](#12-docker-deployment)
 13. [Deployment & Infrastructure (Non-Docker)](#13-deployment--infrastructure-non-docker)
@@ -23,9 +23,9 @@
 
 ## 1. Project Overview
 
-**FRDS** is a full-stack, AI-powered technical support chatbot designed to help operations teams rapidly diagnose and resolve system incidents. It combines a **Retrieval-Augmented Generation (RAG)** pipeline with a **large language model (LLM)** to deliver contextually accurate, actionable troubleshooting guidance drawn from a curated knowledge base of historical FRDS system incidents.
+**CBP Training Assistant** is a full-stack, AI-powered training chatbot designed to help U.S. Customs and Border Protection personnel learn about policies, procedures, and best practices. It combines a **Retrieval-Augmented Generation (RAG)** pipeline with a **large language model (LLM)** to deliver contextually accurate, educational guidance drawn from a curated knowledge base of CBP training materials.
 
-The application presents a dark-themed, responsive chat interface where users can ask natural-language questions about technical issues, error codes, and troubleshooting procedures. The system uses **hybrid search** (dense + sparse vectors) to find the most relevant incident documentation, then feeds that context to the LLM to synthesize a clear, human-readable answer.
+The application presents a dark-themed, responsive chat interface where trainees can ask natural-language questions about border security, customs regulations, immigration law, and inspection procedures. The system uses **hybrid search** (dense + sparse vectors) to find the most relevant training content, then feeds that context to the LLM to synthesize a clear, educational answer.
 
 ### Key Capabilities
 
@@ -36,7 +36,7 @@ The application presents a dark-themed, responsive chat interface where users ca
 | **LLM Response Generation** | Ollama-hosted Llama 3.1 (8B) with system-prompt engineering and RAG context injection |
 | **WebSocket Streaming** | Real-time response streaming for better user experience |
 | **Multi-Turn Conversations** | Persistent sessions stored in PostgreSQL, enabling follow-up questions within the same context |
-| **5-Star Rating System** | Users can rate bot responses from 1-5 stars for quality monitoring |
+| **5-Star Rating System** | Trainees can rate bot responses from 1-5 stars for quality monitoring |
 | **Real-Time Service Monitoring** | Live health checks for Ollama, Qdrant, and PostgreSQL displayed in the UI |
 | **Graceful Degradation** | Deterministic RAG-context fallback when the LLM is unreachable |
 | **Responsive Design** | Dark UI for desktop, tablet, and mobile with collapsible sidebar |
@@ -47,11 +47,11 @@ The application presents a dark-themed, responsive chat interface where users ca
 
 ### 2.1 Chat Interface
 
-- **Welcome Screen**: Displays on first load or after clearing a chat. Shows the FRDS FRDS bot avatar, a welcome heading, and a brief description of the system's capabilities.
+- **Welcome Screen**: Displays on first load or after clearing a chat. Shows the CBP Training Assistant bot avatar, a welcome heading, and a brief description of the system's capabilities.
 - **Message Input**: A text input field pinned to the bottom of the viewport. Supports both click-to-send (blue gradient send button) and Enter-key submission. Input is disabled while a response is being generated.
 - **User Messages**: Displayed as right-aligned blue bubbles with a user avatar and timestamp.
-- **Bot Messages**: Displayed as left-aligned white bubbles with the FRDS FRDS robot avatar, formatted text (bold, newlines), and a timestamp.
-- **Typing Indicator**: An animated spinner with "Searching FRDS incidents..." text appears while the RAG + LLM pipeline is processing.
+- **Bot Messages**: Displayed as left-aligned white bubbles with the CBP Training Assistant CBP Training Assistant robot avatar, formatted text (bold, newlines), and a timestamp.
+- **Typing Indicator**: An animated spinner with "Searching CBP Training Assistant incidents..." text appears while the RAG + LLM pipeline is processing.
 - **Markdown-Like Rendering**: Bot responses render `**bold text**` as `<strong>` elements and preserve line breaks.
 
 ### 2.2 5-Star Rating System
@@ -221,7 +221,7 @@ Accessible via the bar chart icon in the top header or by navigating to `/dashbo
         │  PostgreSQL   │  │  Qdrant (Remote)  │
         │  (port 5432)  │  │  148.230.92.74    │
         │               │  │                    │
-        │ • ChatSession │  │ • frds_incidents│
+        │ • ChatSession │  │ • cbp_incidents│
         │ • ChatMessage │  │   collection       │
         │   (feedback,  │  │ • 768-d vectors    │
         │    sources)   │  │ • Cosine distance  │
@@ -257,7 +257,7 @@ User types "How do I fix error API-503?"
     ▼
 5. RAG Search:
    a. Encode query with Ollama nomic-embed-text → 768-d vector
-   b. Qdrant query_points(collection="frds_incidents", limit=3)
+   b. Qdrant query_points(collection="cbp_incidents", limit=3)
    c. Returns top-3 documents with cosine similarity scores
     │
     ▼
@@ -285,7 +285,7 @@ User types "How do I fix error API-503?"
 
 ```
 backend/
-├── frds_project/          # Django project configuration
+├── cbp_project/          # Django project configuration
 │   ├── settings.py            # Database, middleware, app config, Ollama/Qdrant settings
 │   ├── urls.py                # Root URL conf → includes chat.urls under /api/
 │   ├── wsgi.py                # WSGI entry point for Gunicorn
@@ -297,7 +297,7 @@ backend/
 │   ├── serializers.py         # 5 DRF serializers for request/response validation
 │   ├── rag_service.py         # Qdrant + SentenceTransformer vector search service
 │   ├── llm_service.py         # Ollama client + prompt engineering + fallback logic
-│   ├── mock_data.py           # 12 FRDS incident documents for knowledge base
+│   ├── mock_data.py           # 12 CBP Training Assistant incident documents for knowledge base
 │   └── migrations/            # Django database migrations
 ├── manage.py                  # Django management CLI
 └── .env                       # Environment variables
@@ -349,20 +349,20 @@ This means the first request incurs a small delay to establish the connection, b
 
 The `build_rag_prompt()` function constructs a structured prompt that:
 
-1. **System Role**: Defines the bot persona — "FRDS FRDS, a technical support assistant"
+1. **System Role**: Defines the bot persona — "CBP Training Assistant CBP Training Assistant, a technical support assistant"
 2. **Context Injection**: Inserts the top-3 retrieved documents with their title, category, severity, content, and resolution
 3. **User Question**: Appends the original user query
 4. **Instruction**: Asks the model to be "concise but thorough" and reference specific error codes
 
 ```
-You are FRDS FRDS, a technical support assistant...
+You are CBP Training Assistant CBP Training Assistant, a technical support assistant...
 
 === Retrieved Context ===
 --- Document 1 ---
 Title: API Gateway 503 Service Unavailable
 Category: API
 Severity: Critical
-Content: A 503 Service Unavailable error from the FRDS API gateway...
+Content: A 503 Service Unavailable error from the CBP Training Assistant API gateway...
 Resolution: Check pod status, review logs, verify resource limits, check HPA.
 --- Document 2 ---
 ...
@@ -396,8 +396,8 @@ This ensures the chatbot **never returns an empty or broken response**, even whe
 ```
 App.js (ChatApp)
 ├── Sidebar.jsx            # Chat history list, ADK agent status, new chat button
-├── TopHeader.jsx          # FRDS FRDS branding, settings icon, user icon, mobile hamburger
-├── SubHeader.jsx          # Auth badge, "FRDS Support Chat" title, Clear Chat, Connected badge
+├── TopHeader.jsx          # CBP Training Assistant CBP Training Assistant branding, settings icon, user icon, mobile hamburger
+├── SubHeader.jsx          # Auth badge, "CBP Training Assistant Support Chat" title, Clear Chat, Connected badge
 └── ChatArea.jsx           # Main content area
     ├── WelcomeState       # Centered robot icon + welcome text (shown when no messages)
     ├── BotMessage          # Left-aligned white bubble with avatar, formatted text, feedback
@@ -509,7 +509,7 @@ This provides better retrieval quality than either method alone.
 | Property | Value |
 |---|---|
 | Engine | Qdrant (containerized or remote) |
-| Collection Name | `frds_incidents` |
+| Collection Name | `cbp_incidents` |
 | Dense Vector Size | **256** (MRL truncated from 768) |
 | Sparse Vectors | BM25 (variable length) |
 | Distance Metric | Cosine Similarity |
@@ -534,7 +534,7 @@ ingest_documents()
     ├── Extract 'content' field from each document
     ├── Batch-encode all texts via Ollama nomic-embed-text (768-d)
     ├── Create PointStruct(id, vector, payload) for each
-    └── Upsert into Qdrant collection "frds_incidents"
+    └── Upsert into Qdrant collection "cbp_incidents"
 ```
 
 Each document's **payload** in Qdrant contains:
@@ -574,7 +574,7 @@ Each document's **payload** in Qdrant contains:
 
 **Ordering**: `timestamp` (chronological within a session)
 
-### 8.3 Qdrant — `frds_incidents` Collection
+### 8.3 Qdrant — `cbp_incidents` Collection
 
 | Field | Type | Description |
 |---|---|---|
@@ -602,7 +602,7 @@ GET /api/
 **Response** `200 OK`:
 ```json
 {
-  "message": "FRDS FRDS API is running",
+  "message": "CBP Training Assistant CBP Training Assistant API is running",
   "status": "ok"
 }
 ```
@@ -818,7 +818,7 @@ Content-Type: application/json
 POST /api/ingest/
 ```
 
-Triggers ingestion of all 12 FRDS incident documents from `mock_data.py` into Qdrant.
+Triggers ingestion of all 12 CBP Training Assistant incident documents from `mock_data.py` into Qdrant.
 
 **Response** `200 OK`:
 ```json
@@ -925,7 +925,7 @@ Returns RAG pipeline performance metrics including latency statistics, similarit
 
 ## 10. Knowledge Base — Ingested Documents
 
-The system ships with 12 pre-authored FRDS incident documents spanning 12 categories:
+The system ships with 12 pre-authored CBP Training Assistant incident documents spanning 12 categories:
 
 | # | Error Code | Title | Category | Severity |
 |---|---|---|---|---|
@@ -933,7 +933,7 @@ The system ships with 12 pre-authored FRDS incident documents spanning 12 catego
 | 2 | `DB-002` | Database Connection Timeout — Spanner Vector Search | Database | Critical |
 | 3 | `API-503` | API Gateway 503 Service Unavailable | API | Critical |
 | 4 | `SEC-010` | Certificate Expiration Warning | Security | High |
-| 5 | `PERF-005` | Memory Leak in FRDS Processor Service | Performance | Medium |
+| 5 | `PERF-005` | Memory Leak in CBP Training Assistant Processor Service | Performance | Medium |
 | 6 | `DOC-001` | User Guide and Documentation Access | Documentation | Low |
 | 7 | `LOG-003` | Log Aggregation Pipeline Failure | Logging | Medium |
 | 8 | `RBAC-007` | Role-Based Access Control (RBAC) Permission Denied | Authorization | High |
@@ -952,9 +952,9 @@ Each document contains a detailed natural-language description (100–300 words)
 
 | Variable | Default | Description |
 |---|---|---|
-| `PG_DB_NAME` | `frds_db` | PostgreSQL database name |
-| `PG_DB_USER` | `frds_user` | PostgreSQL username |
-| `PG_DB_PASSWORD` | `frds_pass` | PostgreSQL password |
+| `PG_DB_NAME` | `cbp_db` | PostgreSQL database name |
+| `PG_DB_USER` | `cbp_user` | PostgreSQL username |
+| `PG_DB_PASSWORD` | `cbp_pass` | PostgreSQL password |
 | `PG_DB_HOST` | `localhost` | PostgreSQL host |
 | `PG_DB_PORT` | `5432` | PostgreSQL port |
 | `OLLAMA_BASE_URL` | `http://31.220.21.156:11434` | Ollama API server URL (local or remote) |
@@ -962,7 +962,7 @@ Each document contains a detailed natural-language description (100–300 words)
 | `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Ollama model identifier for embeddings |
 | `QDRANT_HOST` | `148.230.92.74` | Qdrant server host (remote instance) |
 | `QDRANT_PORT` | `6333` | Qdrant HTTP API port |
-| `QDRANT_COLLECTION` | `frds_incidents` | Qdrant collection name for document vectors |
+| `QDRANT_COLLECTION` | `cbp_incidents` | Qdrant collection name for document vectors |
 | `DJANGO_SECRET_KEY` | (auto-generated) | Django secret key for production |
 
 ### Frontend — `/app/frontend/.env`
@@ -990,7 +990,7 @@ Each document contains a detailed natural-language description (100–300 words)
 ```bash
 # 1. Clone the repository
 git clone <repository-url>
-cd frds-frds
+cd cbp-frds
 
 # 2. Create environment file from template
 cp .env.docker .env
@@ -1020,7 +1020,7 @@ docker compose logs -f backend
                                     │
                          ┌──────────▼───────────┐
                          │  nginx (port 80)      │
-                         │  frds-proxy        │
+                         │  cbp-proxy        │
                          │                       │
                          │  /api/* → backend:8001│
                          │  /*     → frontend:3000│
@@ -1068,10 +1068,10 @@ docker compose logs -f backend
 
 | Service | Image | Container Name | Internal Port | External Port | Health Check |
 |---|---|---|---|---|---|
-| `postgres` | `postgres:15-alpine` | `frds-postgres` | 5432 | 5432 | `pg_isready` |
-| `backend` | Custom (Python 3.11) | `frds-backend` | 8001 | 8001 | `curl /api/` |
-| `frontend` | Custom (Nginx 1.27) | `frds-frontend` | 3000 | 3000 | `curl /` |
-| `nginx` | `nginx:1.27-alpine` | `frds-proxy` | 80 | 8080 | — |
+| `postgres` | `postgres:15-alpine` | `cbp-postgres` | 5432 | 5432 | `pg_isready` |
+| `backend` | Custom (Python 3.11) | `cbp-backend` | 8001 | 8001 | `curl /api/` |
+| `frontend` | Custom (Nginx 1.27) | `cbp-frontend` | 3000 | 3000 | `curl /` |
+| `nginx` | `nginx:1.27-alpine` | `cbp-proxy` | 80 | 8080 | — |
 
 **External Dependencies (not containerized):**
 - **Qdrant**: Remote instance at `148.230.92.74:6333`
@@ -1133,7 +1133,7 @@ make logs              # Follow all logs
 make logs-backend      # Follow backend logs only
 make status            # Show container status
 make health            # Check health of all services
-make ingest            # Re-ingest FRDS data into Qdrant
+make ingest            # Re-ingest CBP Training Assistant data into Qdrant
 make shell-backend     # Open bash in backend container
 make shell-db          # Open psql in PostgreSQL
 make migrate           # Run Django migrations
@@ -1145,9 +1145,9 @@ Copy `.env.docker` to `.env` and customize:
 
 ```bash
 # ---- PostgreSQL ----
-PG_DB_NAME=frds_db
-PG_DB_USER=frds_user
-PG_DB_PASSWORD=frds_pass          # CHANGE IN PRODUCTION
+PG_DB_NAME=cbp_db
+PG_DB_USER=cbp_user
+PG_DB_PASSWORD=cbp_pass          # CHANGE IN PRODUCTION
 
 # ---- Ollama (Remote LLM + Embeddings) ----
 OLLAMA_BASE_URL=http://31.220.21.156:11434
@@ -1201,7 +1201,7 @@ REACT_APP_BACKEND_URL=http://localhost:8080   # Set to public domain in prod
 
 | Process | Command | Port |
 |---|---|---|
-| `backend` | `gunicorn frds_project.wsgi:application --bind 0.0.0.0:8001 --workers 1 --timeout 300 --reload` | 8001 |
+| `backend` | `gunicorn cbp_project.wsgi:application --bind 0.0.0.0:8001 --workers 1 --timeout 300 --reload` | 8001 |
 | `frontend` | `craco start` (React dev server) | 3000 |
 | `nginx-proxy` | Reverse proxy routing | 80/443 |
 
@@ -1220,8 +1220,8 @@ REACT_APP_BACKEND_URL=http://localhost:8080   # Set to public domain in prod
 pg_ctlcluster 15 main start
 
 # 2. Create database
-sudo -u postgres psql -c "CREATE USER frds_user WITH PASSWORD 'frds_pass';"
-sudo -u postgres psql -c "CREATE DATABASE frds_db OWNER frds_user;"
+sudo -u postgres psql -c "CREATE USER cbp_user WITH PASSWORD 'cbp_pass';"
+sudo -u postgres psql -c "CREATE DATABASE cbp_db OWNER cbp_user;"
 
 # 3. Run Django migrations
 cd /app/backend
@@ -1304,7 +1304,7 @@ curl http://localhost:8001/api/status/
 │   ├── .env                           # Environment configuration
 │   ├── manage.py                      # Django CLI
 │   ├── requirements.txt               # Python dependencies (pip freeze)
-│   ├── frds_project/
+│   ├── cbp_project/
 │   │   ├── __init__.py
 │   │   ├── settings.py                # Django settings (DB, Ollama, Qdrant config)
 │   │   ├── urls.py                    # Root URL configuration
@@ -1318,7 +1318,7 @@ curl http://localhost:8001/api/status/
 │       ├── serializers.py             # 5 DRF serializers
 │       ├── rag_service.py             # Qdrant + SentenceTransformer service
 │       ├── llm_service.py             # Ollama client + prompt + fallback
-│       ├── mock_data.py               # 12 FRDS incident documents
+│       ├── mock_data.py               # 12 CBP Training Assistant incident documents
 │       ├── admin.py                   # Django admin (default)
 │       ├── apps.py                    # App configuration
 │       ├── tests.py                   # Test stubs
@@ -1349,4 +1349,4 @@ curl http://localhost:8001/api/status/
 
 ---
 
-*FRDS FRDS — Built with Django 5.2, React 19, Ollama (Llama 3.1 + nomic-embed-text), Qdrant 1.17, and PostgreSQL.*
+*CBP Training Assistant CBP Training Assistant — Built with Django 5.2, React 19, Ollama (Llama 3.1 + nomic-embed-text), Qdrant 1.17, and PostgreSQL.*

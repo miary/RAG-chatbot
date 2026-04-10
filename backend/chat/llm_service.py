@@ -18,46 +18,45 @@ def get_ollama_client():
 
 
 def build_rag_prompt(query: str, context_docs: list[dict]) -> str:
-    """Build a prompt that includes retrieved context documents."""
+    """Build a prompt that includes retrieved training content."""
     context_parts = []
     for i, doc in enumerate(context_docs, 1):
         context_parts.append(
-            f"--- Document {i} ---\n"
+            f"--- Training Module {i} ---\n"
             f"Title: {doc.get('title', 'N/A')}\n"
             f"Category: {doc.get('category', 'N/A')}\n"
-            f"Severity: {doc.get('severity', 'N/A')}\n"
+            f"Module: {doc.get('module', 'N/A')}\n"
             f"Content: {doc.get('content', '')}\n"
-            f"Resolution: {doc.get('resolution', 'N/A')}\n"
         )
 
     context_text = '\n'.join(context_parts)
 
-    prompt = f"""You are FRDS, a technical support assistant that helps users resolve FRDS system incidents. You provide clear, concise solutions based on historical incident data.
+    prompt = f"""You are the CBP Training Assistant, an AI-powered learning companion designed to help U.S. Customs and Border Protection personnel understand policies, procedures, and best practices.
 
-Use the following retrieved context documents to answer the user's question. If the context is relevant, reference specific details. If none of the context is relevant, say so honestly and offer general guidance.
+Use the following training materials to answer the trainee's question. Provide clear, accurate information based on official CBP procedures. If the training content is relevant, reference specific details and procedures. If the question is outside the available training materials, acknowledge this and suggest consulting official CBP resources or supervisors.
 
-=== Retrieved Context ===
+=== Training Materials ===
 {context_text}
-=== End Context ===
+=== End Training Materials ===
 
-User Question: {query}
+Trainee Question: {query}
 
-Provide a helpful, accurate response. Be concise but thorough. If referencing a specific error code or resolution, mention it explicitly."""
+Provide a helpful, educational response. Be clear and thorough, emphasizing proper procedures and compliance. When referencing specific regulations or procedures, cite them explicitly. Encourage the trainee to practice these skills and seek hands-on guidance from experienced officers."""
     return prompt
 
 
 def _fallback_response(query: str, context_docs: list[dict]) -> str:
-    """Generate a structured response from RAG context when Ollama is unavailable.
+    """Generate a structured response from training content when Ollama is unavailable.
 
     This is a deterministic fallback that formats the best-matching
-    context document(s) into a readable answer.
+    training document(s) into a readable answer.
     """
     if not context_docs:
         return (
-            "I wasn't able to find specific information related to your query in our "
-            "FRDS incident database. Please try rephrasing your question, or "
-            "contact the FRDS support team at frds-support@cbp.dhs.gov for "
-            "further assistance."
+            "I wasn't able to find specific training materials related to your question "
+            "in our knowledge base. Please try rephrasing your question, or "
+            "consult the CBP Learning Portal or your Field Training Officer for "
+            "additional guidance."
         )
 
     top = context_docs[0]
@@ -66,28 +65,28 @@ def _fallback_response(query: str, context_docs: list[dict]) -> str:
     # If best match has very low relevance, say so
     if score < 0.05:
         return (
-            "I found some information in our database, but it may not directly address "
+            "I found some training materials, but they may not directly address "
             "your question. Here's the closest match:\n\n"
             f"**{top.get('title', '')}**\n"
             f"{top.get('content', '')}\n\n"
-            f"*Resolution:* {top.get('resolution', 'N/A')}\n\n"
-            "If this doesn't help, please rephrase your question or contact "
-            "frds-support@cbp.dhs.gov."
+            f"*Module:* {top.get('module', 'N/A')}\n\n"
+            "If this doesn't answer your question, please consult your supervisor "
+            "or the CBP Learning Portal for more specific guidance."
         )
 
     # Good match – format a proper answer
     parts = []
-    parts.append(f"Based on our FRDS incident database, here's what I found:\n")
-    parts.append(f"**{top.get('title', '')}** (Category: {top.get('category', 'N/A')}, Severity: {top.get('severity', 'N/A')})\n")
+    parts.append(f"Based on our CBP training materials, here's the relevant information:\n")
+    parts.append(f"**{top.get('title', '')}** (Category: {top.get('category', 'N/A')})\n")
     parts.append(f"{top.get('content', '')}\n")
 
-    if top.get('resolution'):
-        parts.append(f"\n**Recommended Resolution:** {top['resolution']}\n")
+    if top.get('module'):
+        parts.append(f"\n*Training Module:* {top['module']}\n")
 
     # Include additional relevant docs if available
     additional = [d for d in context_docs[1:] if d.get('score', 0) > 0.1]
     if additional:
-        parts.append("\n**Related incidents:**")
+        parts.append("\n**Related Training Topics:**")
         for doc in additional:
             parts.append(f"- {doc.get('title', '')} ({doc.get('category', 'N/A')})")
 
@@ -110,10 +109,11 @@ def generate_response(query: str, context_docs: list[dict]) -> str:
                 {
                     'role': 'system',
                     'content': (
-                        'You are FRDS, a helpful technical support chatbot for '
-                        'the FRDS system. You help users troubleshoot incidents '
-                        'and find solutions based on historical data. Keep responses '
-                        'concise and actionable.'
+                        'You are the CBP Training Assistant, an AI-powered learning companion '
+                        'for U.S. Customs and Border Protection personnel. You help trainees '
+                        'understand CBP policies, procedures, regulations, and best practices. '
+                        'Provide accurate, professional responses that emphasize proper procedures '
+                        'and compliance. Be educational and supportive in your tone.'
                     ),
                 },
                 {

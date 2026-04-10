@@ -59,7 +59,7 @@ const Sidebar = ({ chatHistory, agentStatus, onNewChat, onSelectChat, isOpen, on
           )}
         </div>
 
-        {/* ADK Agent Status */}
+        {/* Training Knowledge Base Status */}
         <div className="px-4 py-3 pb-20 border-t border-[#2a3a5c]">
           <div className="flex items-start gap-2">
             <div className="mt-1">

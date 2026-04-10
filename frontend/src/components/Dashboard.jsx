@@ -414,7 +414,7 @@ const Dashboard = () => {
           <ArrowLeft size={20} />
           <span>Back to Chat</span>
         </Link>
-        <h1 className="dashboard-title">Analytics Dashboard</h1>
+        <h1 className="dashboard-title">CBP Training Analytics</h1>
       </header>
 
       {/* Tabs */}
@@ -425,7 +425,7 @@ const Dashboard = () => {
           data-testid="usage-tab-btn"
         >
           <MessageSquare size={18} />
-          Usage Metrics
+          Training Usage
         </button>
         <button
           className={`tab-button ${activeTab === "rag" ? "active" : ""}`}
@@ -433,7 +433,7 @@ const Dashboard = () => {
           data-testid="rag-tab-btn"
         >
           <Zap size={18} />
-          RAG Performance
+          Knowledge Base Performance
         </button>
       </div>
 

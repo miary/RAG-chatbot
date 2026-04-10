@@ -1,12 +1,12 @@
-# FRDS - Product Requirements Document
+# CBP Training Assistant - Product Requirements Document
 
 ## Original Problem Statement
-Build a responsive, mobile-friendly chatbot interface implementing a full-stack RAG (Retrieval-Augmented Generation) backend for technical incident support.
+Build a responsive, mobile-friendly chatbot interface to serve as a training tool for U.S. Customs and Border Protection (CBP) personnel. The assistant helps trainees learn about CBP policies, procedures, regulations, and best practices through an AI-powered conversational interface.
 
 ## User Personas
-- **Operations Teams**: Need rapid diagnosis and resolution of system incidents
-- **Support Engineers**: Query the knowledge base for troubleshooting guidance
-- **Administrators**: Monitor system health and analytics
+- **CBP Trainees**: New officers learning policies, procedures, and regulations
+- **Field Training Officers**: Using the tool to supplement hands-on training
+- **Training Supervisors**: Monitoring training engagement and knowledge gaps via analytics
 
 ## Core Requirements
 
@@ -14,16 +14,32 @@ Build a responsive, mobile-friendly chatbot interface implementing a full-stack 
 - UI Clone with dark-themed responsive chat interface
 - Full-Stack RAG Backend with Django 5.2, PostgreSQL, Qdrant
 - Docker Compose orchestration and documentation
-- Analytics Dashboard with Usage Metrics & RAG Performance tabs
-- 5-Star Rating System
-- WebSocket Streaming
+- Analytics Dashboard with Usage Metrics & Knowledge Base Performance tabs
+- 5-Star Rating System for training quality feedback
+- WebSocket Streaming for real-time responses
 
-### Phase 8: Local Embedding Models via FastEmbed (COMPLETED - April 10, 2026)
+### Phase 8: Local Embedding Models via FastEmbed (COMPLETED)
 - Switched to Qdrant FastEmbed for local embedding generation
 - Dense model: nomic-ai/nomic-embed-text-v1.5-Q (quantized, 768d -> 256d MRL)
 - Sparse model: Qdrant/bm25 (BM25-based sparse embeddings)
 - Hybrid search with Reciprocal Rank Fusion (RRF)
-- Models pre-downloaded to `./models` directory (~150MB total)
+
+### Phase 9: CBP Training Rebranding (COMPLETED - April 10, 2026)
+- Rebranded from "FRDS" to "CBP Training Assistant"
+- Created 12 realistic CBP training modules covering:
+  - Primary & Secondary Inspection Procedures
+  - Immigration Document Verification
+  - Customs Declaration & Duty Assessment
+  - Agricultural Inspection Requirements
+  - Currency Reporting Requirements
+  - Visa Waiver Program (VWP) and ESTA
+  - Trusted Traveler Programs
+  - Human Trafficking Indicators
+  - Use of Force Policy & De-escalation
+  - TECS & Law Enforcement Database Queries
+  - CBP Ethics & Professional Conduct
+- Updated all UI text, welcome messages, and placeholders
+- Updated LLM system prompts for training context
 
 ## Architecture
 
@@ -46,20 +62,20 @@ Frontend (React 19) → Nginx Proxy → Django 5.2 Backend (Daphne ASGI)
 - **Hybrid Search**: RRF fusion of dense + sparse results
 - **LLM Model**: llama3.1:8b (remote Ollama)
 - **Vector DB**: Qdrant (remote at 148.230.92.74:6333)
-- **Knowledge Base**: 12 FRDS incident documents
+- **Knowledge Base**: 12 CBP training modules
 - **Rating System**: 5-star scale (1-5)
 
-## Local Models Setup
-```bash
-# Download models before Docker deployment
-pip install fastembed
-python download_models.py
-
-# Models saved to:
-# - models/  (FastEmbed cache structure)
-#   - nomic-ai/nomic-embed-text-v1.5-Q (~130MB)
-#   - Qdrant/bm25 (~20MB)
-```
+## Training Content Categories
+1. **Inspection Procedures**: Primary inspection, secondary inspection, referral criteria
+2. **Document Verification**: Passport verification, visa authentication, fraud detection
+3. **Customs**: Declarations, duty assessment, prohibited items
+4. **Agriculture**: Agricultural inspection, quarantine requirements
+5. **Trade & Currency**: Currency reporting, monetary instruments
+6. **Immigration**: Visa Waiver Program, ESTA, admissibility
+7. **Trusted Traveler**: Global Entry, NEXUS, SENTRI, FAST
+8. **Law Enforcement**: Human trafficking, officer safety, use of force
+9. **Systems**: TECS, NCIC, database queries
+10. **Professional Standards**: Ethics, conduct, reporting
 
 ## Docker Deployment
 ```bash
@@ -74,26 +90,32 @@ docker compose logs -f backend
 ```
 
 ## Status: COMPLETED
-All phases implemented. Application ready for production deployment with local FastEmbed-based embedding models.
+All phases implemented. CBP Training Assistant ready for deployment.
 
 ## Future Enhancements (Backlog)
-1. **P1**: User Authentication
-2. **P2**: Knowledge Base Management UI
-3. **P2**: Export Features
-4. **P3**: Multi-language Support
+1. **P1**: User Authentication for personalized training tracking
+2. **P2**: Knowledge Base Management UI for content updates
+3. **P2**: Export features for training progress reports
+4. **P3**: Multi-language support for diverse workforce
+5. **P3**: Integration with official CBP Learning Portal
 
 ## Changelog
 
-### April 10, 2026
+### April 10, 2026 - CBP Training Rebranding
+- Rebranded entire application from "FRDS" to "CBP Training Assistant"
+- Created 12 realistic CBP training modules
+- Updated all frontend components (TopHeader, SubHeader, ChatArea, Sidebar, Dashboard)
+- Updated backend mock_data.py with CBP training content
+- Updated LLM system prompts for educational context
+- Changed Qdrant collection from "frds_incidents" to "cbp_training"
+- Updated all documentation (README.md, docker-compose.yml, .env files)
+
+### April 10, 2026 - FastEmbed Integration
 - Switched from sentence-transformers/SPLADE to Qdrant FastEmbed
-- Dense model: nomic-ai/nomic-embed-text-v1.5-Q (quantized version, ~130MB vs ~550MB)
-- Sparse model: Qdrant/bm25 (replaces SPLADE)
-- Updated download_models.py to use FastEmbed API
-- Updated rag_service.py for FastEmbed integration
-- Updated documentation (README.md, docker-compose.yml, .env.docker)
+- Dense model: nomic-ai/nomic-embed-text-v1.5-Q
+- Sparse model: Qdrant/bm25
 
 ### Previous Updates
 - WebSocket streaming for real-time chat responses
 - 5-star rating system for feedback
 - Analytics dashboard with usage and RAG performance metrics
-- Rebranding from "Guardian" to "FRDS"

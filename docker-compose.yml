@@ -1,5 +1,5 @@
 # =============================================================================
-# FRDS — Docker Compose Orchestration
+# CBP Training Assistant — Docker Compose Orchestration
 #
 # Services:
 #   1. postgres     — PostgreSQL 15 (relational database)
@@ -102,7 +102,7 @@ services:
       # Qdrant (local container)
       QDRANT_HOST: qdrant
       QDRANT_PORT: "6333"
-      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-frds_incidents}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-cbp_training}
 
       # Local embedding models via FastEmbed (mounted from ./models)
       # Dense: nomic-embed-text-v1.5-Q (768d -> 256d via MRL, quantized)

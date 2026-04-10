@@ -44,10 +44,10 @@ const ChatApp = () => {
         setServiceStatus(res.data);
         setAgentStatus({
           connected: res.data.services.qdrant,
-          label: "ADK Agent Status",
+          label: "Training Knowledge Base",
           detail: res.data.services.qdrant
-            ? "Connected to Spanner Vector Search"
-            : "Disconnected from Vector Search",
+            ? "Connected to CBP Training Database"
+            : "Disconnected from Training Database",
         });
       } catch (e) {
         console.error("Status check failed:", e);
@@ -256,8 +256,8 @@ const ChatApp = () => {
           showFeedback: m.message_type === "bot",
           rating: m.rating,
           sources: m.sources || [],
-          link: m.text.includes("pspd-frds-help-dev.cbp.dhs.gov")
-            ? "https://pspd-frds-help-dev.cbp.dhs.gov"
+          link: m.text.includes("cbp.gov")
+            ? "https://www.cbp.gov"
             : null,
         }))
       );
