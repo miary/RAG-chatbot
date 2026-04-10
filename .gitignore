@@ -156,3 +156,7 @@ models/dense/model.safetensors
 # Environment files
 *.env
 *.env.*
+-e 
+# Environment files
+*.env
+*.env.*
