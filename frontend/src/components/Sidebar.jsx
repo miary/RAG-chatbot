@@ -75,7 +75,11 @@ const Sidebar = ({ chatHistory, connectionStatus, onNewChat, onSelectChat, isOpe
 
         {/* Connection Status */}
         <div className="px-4 py-3 pb-6 border-t border-[#2a3a5c]">
-          <div className="flex items-center gap-2" role="status" aria-live="polite">
+          <div 
+            className="flex items-center gap-2 px-3 py-2 rounded-full border border-[#2a3a5c] bg-[#0f1d35] w-fit" 
+            role="status" 
+            aria-live="polite"
+          >
             <div
               className="w-2.5 h-2.5 rounded-full flex-shrink-0"
               style={{ backgroundColor: connectionStatus?.connected ? '#00AAAA' : '#ff4444' }}
