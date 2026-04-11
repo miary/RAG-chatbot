@@ -432,17 +432,7 @@ const ChatApp = () => {
 
       <main className="chat-main-area" role="main">
         <TopHeader onToggleSidebar={toggleSidebar} />
-        <SubHeader
-          serviceAuth={{
-            authenticated: true,
-            label: "Service Account Authentication",
-          }}
-          connectionStatus={{
-            connected: serviceStatus.connected,
-            label: serviceStatus.connected ? "Connected" : "Disconnected",
-          }}
-          onClearChat={handleClearChat}
-        />
+        <SubHeader onClearChat={handleClearChat} />
         <ChatArea
           messages={messages}
           inputValue={inputValue}
