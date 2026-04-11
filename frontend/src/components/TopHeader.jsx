@@ -9,24 +9,29 @@ const TopHeader = ({ onToggleSidebar }) => {
       style={{
         background: 'linear-gradient(180deg, #0c1a32 0%, #0a387b 100%)',
       }}
+      role="banner"
     >
       <div className="flex items-center gap-3">
         {/* Mobile hamburger */}
         <button
           onClick={onToggleSidebar}
-          className="lg:hidden text-white hover:text-[#6893ff] transition-colors"
+          className="lg:hidden text-white hover:text-[#6893ff] transition-colors focus:outline-none focus:ring-2 focus:ring-[#6893ff] focus:ring-offset-2 focus:ring-offset-[#0c1a32] rounded p-1"
+          aria-label="Toggle navigation menu"
+          aria-expanded="false"
         >
-          <Menu size={22} />
+          <Menu size={22} aria-hidden="true" />
         </button>
 
-        {/* Robot Icon */}
+        {/* Logo/Brand */}
         <div
           className="w-10 h-10 rounded-full flex items-center justify-center border-2 border-[#6893ff]"
           style={{
             background: 'linear-gradient(180deg, #6893ff 0%, #0c1a32 100%)',
           }}
+          role="img"
+          aria-label="CBP Training Assistant logo"
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <rect x="4" y="8" width="16" height="12" rx="3" stroke="white" strokeWidth="1.5" />
             <circle cx="9" cy="14" r="1.5" fill="white" />
             <circle cx="15" cy="14" r="1.5" fill="white" />
@@ -42,22 +47,31 @@ const TopHeader = ({ onToggleSidebar }) => {
         </span>
       </div>
 
-      <div className="flex items-center gap-3">
+      <nav className="flex items-center gap-3" aria-label="Main navigation">
         <Link 
           to="/dashboard" 
-          className="text-white/80 hover:text-white transition-colors"
+          className="text-white/80 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#6893ff] focus:ring-offset-2 focus:ring-offset-[#0c1a32] rounded p-1"
           title="Analytics Dashboard"
+          aria-label="Go to Analytics Dashboard"
           data-testid="dashboard-link"
         >
-          <BarChart3 size={22} />
+          <BarChart3 size={22} aria-hidden="true" />
         </Link>
-        <button className="text-white/80 hover:text-white transition-colors">
-          <Settings size={22} />
+        <button 
+          className="text-white/80 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#6893ff] focus:ring-offset-2 focus:ring-offset-[#0c1a32] rounded p-1"
+          aria-label="Settings"
+          title="Settings"
+        >
+          <Settings size={22} aria-hidden="true" />
         </button>
-        <button className="text-white/80 hover:text-white transition-colors">
-          <User size={22} />
+        <button 
+          className="text-white/80 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#6893ff] focus:ring-offset-2 focus:ring-offset-[#0c1a32] rounded p-1"
+          aria-label="User profile"
+          title="User profile"
+        >
+          <User size={22} aria-hidden="true" />
         </button>
-      </div>
+      </nav>
     </header>
   );
 };

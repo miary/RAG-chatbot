@@ -10,36 +10,33 @@ Build a responsive, mobile-friendly chatbot interface to serve as a training too
 
 ## Core Requirements
 
-### Phase 1-7: COMPLETED
-- UI Clone with dark-themed responsive chat interface
-- Full-Stack RAG Backend with Django 5.2, PostgreSQL, Qdrant
-- Docker Compose orchestration and documentation
-- Analytics Dashboard with Usage Metrics & Knowledge Base Performance tabs
-- 5-Star Rating System for training quality feedback
-- WebSocket Streaming for real-time responses
+### Completed Features
+1. **UI Clone** with dark-themed responsive chat interface (DONE)
+2. **Full-Stack RAG Backend** with Django 5.2, PostgreSQL, Qdrant (DONE)
+3. **Docker Compose** orchestration and documentation (DONE)
+4. **Analytics Dashboard** with Usage Metrics & Knowledge Base Performance tabs (DONE)
+5. **5-Star Rating System** for training quality feedback (DONE)
+6. **WebSocket Streaming** for real-time responses (DONE)
+7. **Local Embedding Models** via FastEmbed (nomic-embed-text + BM25) (DONE)
+8. **CBP Training Rebranding** (DONE)
+9. **508 Accessibility Compliance** (DONE - April 11, 2026)
+   - ARIA labels and roles throughout
+   - Keyboard navigation support
+   - Focus indicators
+   - Screen reader compatibility
+   - Semantic HTML structure
 
-### Phase 8: Local Embedding Models via FastEmbed (COMPLETED)
-- Switched to Qdrant FastEmbed for local embedding generation
-- Dense model: nomic-ai/nomic-embed-text-v1.5-Q (quantized, 768d -> 256d MRL)
-- Sparse model: Qdrant/bm25 (BM25-based sparse embeddings)
-- Hybrid search with Reciprocal Rank Fusion (RRF)
-
-### Phase 9: CBP Training Rebranding (COMPLETED - April 10, 2026)
-- Rebranded from "FRDS" to "CBP Training Assistant"
-- Created 12 realistic CBP training modules covering:
-  - Primary & Secondary Inspection Procedures
-  - Immigration Document Verification
-  - Customs Declaration & Duty Assessment
-  - Agricultural Inspection Requirements
-  - Currency Reporting Requirements
-  - Visa Waiver Program (VWP) and ESTA
-  - Trusted Traveler Programs
-  - Human Trafficking Indicators
-  - Use of Force Policy & De-escalation
-  - TECS & Law Enforcement Database Queries
-  - CBP Ethics & Professional Conduct
-- Updated all UI text, welcome messages, and placeholders
-- Updated LLM system prompts for training context
+### UI Changes (April 11, 2026)
+- Removed "Made with Emergent" badge
+- Removed floating robot icon (FAB) at bottom left
+- Removed "Training Knowledge Base" section from sidebar
+- Moved "Connected" status indicator to bottom of sidebar
+- Added 508 compliance throughout:
+  - `role` attributes for semantic meaning
+  - `aria-label` for interactive elements
+  - `aria-live` for dynamic content
+  - Focus ring styles for keyboard navigation
+  - Screen reader only text (`sr-only`)
 
 ## Architecture
 
@@ -48,34 +45,29 @@ Frontend (React 19) → Nginx Proxy → Django 5.2 Backend (Daphne ASGI)
                                          ↓
                     ┌────────────────────┼────────────────────┐
                     ↓                    ↓                    ↓
-              PostgreSQL          Qdrant (Remote)       Remote Ollama
-              (sessions)         (148.230.92.74)        (LLM only)
+              PostgreSQL          Qdrant (v1.17)        Remote Ollama
+              (sessions)         (local Docker)         (LLM only)
                     ↑
               Local Models (./models via FastEmbed)
-              - Dense: nomic-embed-text-v1.5-Q
+              - Dense: nomic-embed-text-v1.5
               - Sparse: Qdrant/bm25
 ```
 
 ## Key Technical Details
-- **Dense Embedding**: nomic-embed-text-v1.5-Q with MRL (768→256 dimensions) via FastEmbed
+- **Dense Embedding**: nomic-embed-text-v1.5 with MRL (768→256 dimensions) via FastEmbed
 - **Sparse Embedding**: Qdrant/bm25 for keyword matching via FastEmbed
 - **Hybrid Search**: RRF fusion of dense + sparse results
 - **LLM Model**: llama3.1:8b (remote Ollama)
-- **Vector DB**: Qdrant (remote at 148.230.92.74:6333)
+- **Vector DB**: Qdrant v1.17 (local Docker)
 - **Knowledge Base**: 12 CBP training modules
 - **Rating System**: 5-star scale (1-5)
 
-## Training Content Categories
-1. **Inspection Procedures**: Primary inspection, secondary inspection, referral criteria
-2. **Document Verification**: Passport verification, visa authentication, fraud detection
-3. **Customs**: Declarations, duty assessment, prohibited items
-4. **Agriculture**: Agricultural inspection, quarantine requirements
-5. **Trade & Currency**: Currency reporting, monetary instruments
-6. **Immigration**: Visa Waiver Program, ESTA, admissibility
-7. **Trusted Traveler**: Global Entry, NEXUS, SENTRI, FAST
-8. **Law Enforcement**: Human trafficking, officer safety, use of force
-9. **Systems**: TECS, NCIC, database queries
-10. **Professional Standards**: Ethics, conduct, reporting
+## 508 Accessibility Compliance
+- **ARIA Landmarks**: `role="application"`, `role="main"`, `role="banner"`, `role="navigation"`, `role="complementary"`
+- **Interactive Elements**: All buttons have `aria-label`, focus states
+- **Dynamic Content**: `aria-live="polite"` for chat messages and status updates
+- **Keyboard Navigation**: Tab order, Enter to submit, focus indicators
+- **Screen Readers**: Descriptive labels, hidden decorative elements with `aria-hidden`
 
 ## Docker Deployment
 ```bash
@@ -83,14 +75,14 @@ Frontend (React 19) → Nginx Proxy → Django 5.2 Backend (Daphne ASGI)
 python download_models.py
 
 # 2. Start services
-docker compose up -d
+docker compose up -d --build
 
-# 3. View logs
-docker compose logs -f backend
+# 3. Access the app
+http://localhost:8080
 ```
 
 ## Status: COMPLETED
-All phases implemented. CBP Training Assistant ready for deployment.
+All features implemented including 508 accessibility compliance.
 
 ## Future Enhancements (Backlog)
 1. **P1**: User Authentication for personalized training tracking
@@ -101,27 +93,27 @@ All phases implemented. CBP Training Assistant ready for deployment.
 
 ## Changelog
 
-### April 10, 2026 - Requirements Cleanup
-- Removed unnecessary packages (google-*, emergentintegrations, torch, transformers, etc.)
-- Reduced requirements.txt from 175 packages to ~15 essential packages
-- Fixed Docker build failure caused by emergentintegrations==0.1.0 (not on PyPI)
-- Updated both /app/backend/requirements.txt and /app/docker/requirements.txt
+### April 11, 2026 - 508 Compliance & UI Cleanup
+- Added comprehensive ARIA labels and roles throughout
+- Added keyboard navigation support with visible focus indicators
+- Removed "Made with Emergent" badge from bottom right
+- Removed floating robot icon (FAB) from bottom left
+- Moved connection status to sidebar bottom
+- Removed duplicate "Connected" badge from header
+- Updated index.html with proper title and meta tags
+- Removed third-party tracking scripts
+
+### April 10, 2026 - Docker Fixes
+- Fixed Qdrant version to v1.17 (valid tag)
+- Fixed nomic-embed-text model to use full version (not quantized)
+- Simplified depends_on configuration
 
 ### April 10, 2026 - CBP Training Rebranding
-- Rebranded entire application from "FRDS" to "CBP Training Assistant"
+- Rebranded from "FRDS" to "CBP Training Assistant"
 - Created 12 realistic CBP training modules
-- Updated all frontend components (TopHeader, SubHeader, ChatArea, Sidebar, Dashboard)
-- Updated backend mock_data.py with CBP training content
-- Updated LLM system prompts for educational context
-- Changed Qdrant collection from "frds_incidents" to "cbp_training"
-- Updated all documentation (README.md, docker-compose.yml, .env files)
+- Updated all UI text and LLM prompts
 
 ### April 10, 2026 - FastEmbed Integration
-- Switched from sentence-transformers/SPLADE to Qdrant FastEmbed
-- Dense model: nomic-ai/nomic-embed-text-v1.5-Q
+- Switched to Qdrant FastEmbed for local embeddings
+- Dense model: nomic-ai/nomic-embed-text-v1.5
 - Sparse model: Qdrant/bm25
-
-### Previous Updates
-- WebSocket streaming for real-time chat responses
-- 5-star rating system for feedback
-- Analytics dashboard with usage and RAG performance metrics

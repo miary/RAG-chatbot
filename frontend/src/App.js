@@ -30,11 +30,6 @@ const ChatApp = () => {
     connected: false,
     services: { ollama: false, qdrant: false, postgresql: false },
   });
-  const [agentStatus, setAgentStatus] = useState({
-    connected: false,
-    label: "ADK Agent Status",
-    detail: "Checking connection...",
-  });
 
   // Fetch service status on mount
   useEffect(() => {
@@ -42,13 +37,6 @@ const ChatApp = () => {
       try {
         const res = await axios.get(`${API}/status/`);
         setServiceStatus(res.data);
-        setAgentStatus({
-          connected: res.data.services.qdrant,
-          label: "Training Knowledge Base",
-          detail: res.data.services.qdrant
-            ? "Connected to CBP Training Database"
-            : "Disconnected from Training Database",
-        });
       } catch (e) {
         console.error("Status check failed:", e);
       }
@@ -432,17 +420,17 @@ const ChatApp = () => {
   }, []);
 
   return (
-    <div className="chat-app-container">
+    <div className="chat-app-container" role="application" aria-label="CBP Training Assistant">
       <Sidebar
         chatHistory={chatHistory}
-        agentStatus={agentStatus}
+        connectionStatus={serviceStatus}
         onNewChat={handleNewChat}
         onSelectChat={loadSession}
         isOpen={sidebarOpen}
         onToggle={toggleSidebar}
       />
 
-      <main className="chat-main-area">
+      <main className="chat-main-area" role="main">
         <TopHeader onToggleSidebar={toggleSidebar} />
         <SubHeader
           serviceAuth={{
@@ -467,45 +455,6 @@ const ChatApp = () => {
           streamStatus={streamStatus}
         />
       </main>
-
-      {/* Floating chatbot icon */}
-      <div className="chatbot-fab">
-        <div className="chatbot-fab-inner">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-            <rect
-              x="4"
-              y="8"
-              width="16"
-              height="12"
-              rx="3"
-              stroke="white"
-              strokeWidth="1.5"
-            />
-            <circle cx="9" cy="14" r="1.5" fill="white" />
-            <circle cx="15" cy="14" r="1.5" fill="white" />
-            <path
-              d="M12 4V8"
-              stroke="white"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-            <circle cx="12" cy="3" r="1.5" stroke="white" strokeWidth="1" />
-            <path
-              d="M2 13H4"
-              stroke="white"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-            <path
-              d="M20 13H22"
-              stroke="white"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
-        </div>
-        <div className="chatbot-fab-dot" />
-      </div>
     </div>
   );
 };

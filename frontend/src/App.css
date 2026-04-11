@@ -34,42 +34,44 @@ body {
   overflow: hidden;
 }
 
-/* Floating Chatbot Button */
-.chatbot-fab {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  z-index: 30;
-  cursor: pointer;
+/* 508 Compliance - Focus indicators */
+*:focus {
+  outline: none;
 }
 
-.chatbot-fab-inner {
-  width: 65px;
-  height: 65px;
-  border-radius: 50%;
-  background-color: #6893ff;
-  border: 2px solid #797979;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 20px rgba(104, 147, 255, 0.3);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+*:focus-visible {
+  outline: 2px solid #6893ff;
+  outline-offset: 2px;
 }
 
-.chatbot-fab-inner:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 24px rgba(104, 147, 255, 0.45);
-}
-
-.chatbot-fab-dot {
+/* Skip to main content link (508 compliance) */
+.skip-link {
   position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background-color: #6893ff;
-  border: 2px solid white;
+  top: -40px;
+  left: 0;
+  background: #6893ff;
+  color: white;
+  padding: 8px 16px;
+  z-index: 100;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Screen reader only text */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* Scrollbar styling */
