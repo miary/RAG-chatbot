@@ -175,3 +175,12 @@ credentials.json
 *.key
 .credentials
 models/models--nomic-ai--nomic-embed-text-v1.5/blobs/147d5aa88c2101237358e17796cf3a227cead1ec304ec34b465bb08e9d952965.incomplete
+-e 
+# Environment and credential files
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
