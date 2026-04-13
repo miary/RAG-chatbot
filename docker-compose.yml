@@ -12,7 +12,7 @@
 # Local models (pre-downloaded, mounted from ./models):
 #   - Dense embeddings:  nomic-embed-text-v1.5 (FastEmbed/ONNX)
 #   - Sparse embeddings: Qdrant/bm25 (FastEmbed)
-#   - LLM:               gemma3:4b (Ollama)
+#   - LLM:               gemma4:latest (Ollama)
 #
 # Usage:
 #   1. Download embedding models: python download_models.py
@@ -118,7 +118,7 @@ services:
 
       # Ollama (local container)
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma3:4b}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma4:latest}
     volumes:
       - ./models:/app/models:ro
     ports:

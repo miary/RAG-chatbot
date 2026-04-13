@@ -5,7 +5,7 @@ Download Ollama models for local deployment.
 This script downloads the specified Ollama model to the 'models/ollama' directory
 for offline use in Docker deployment.
 
-Default Model: gemma3:4b
+Default Model: gemma4:latest
 
 Usage:
     # Download default model (gemma3:4b)
@@ -31,7 +31,7 @@ import urllib.request
 import urllib.error
 
 # Default model
-DEFAULT_MODEL = os.environ.get('OLLAMA_MODEL', 'gemma3:4b')
+DEFAULT_MODEL = os.environ.get('OLLAMA_MODEL', 'gemma4:latest')
 
 # Ollama host (local or Docker)
 OLLAMA_HOST = os.environ.get('OLLAMA_HOST', 'http://localhost:11434')
