@@ -1,5 +1,5 @@
 # =============================================================================
-# PSPD Guardian — .gitignore
+# CBP Training Assistant — .gitignore
 # =============================================================================
 
 # ---- Python ----
@@ -45,6 +45,17 @@ yarn-error.log*
 .env
 backend/.env
 frontend/.env
+*.env
+.env.*
+
+# ---- Whitelist .env.docker (safe to commit, contains no secrets) ----
+!.env.docker
+
+# ---- Credentials ----
+credentials.json
+*.pem
+*.key
+.credentials
 
 # ---- Docker ----
 docker-compose.override.yml
@@ -75,7 +86,6 @@ htmlcov/
 .nox/
 
 # ---- Logs ----
-*.log
 /var/log/
 
 # ---- ML Model Cache (downloaded at runtime or baked into Docker) ----
@@ -90,178 +100,5 @@ htmlcov/
 *.bak
 *.tmp
 *.temp
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
-models/sparse/model.safetensors
--e 
-# Environment files
-*.env
-*.env.*
-models/dense/model.safetensors
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
-models/models--nomic-ai--nomic-embed-text-v1.5/blobs/b4342336debaea79de872370664b0aaeb67dea4605513d00ee236ea871a81f27
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
 models/models--nomic-ai--nomic-embed-text-v1.5/blobs/147d5aa88c2101237358e17796cf3a227cead1ec304ec34b465bb08e9d952965.incomplete
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
+models/models--nomic-ai--nomic-embed-text-v1.5/blobs/b4342336debaea79de872370664b0aaeb67dea4605513d00ee236ea871a81f27
