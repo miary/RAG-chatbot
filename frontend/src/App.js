@@ -188,6 +188,12 @@ const ChatApp = () => {
         ));
         // Refresh chat history sidebar immediately
         fetchSessions();
+        // Reset session so next question creates a new sidebar entry
+        setSessionId(null);
+        if (wsRef.current) {
+          wsRef.current.close();
+          wsRef.current = null;
+        }
         break;
 
       case 'error':
@@ -319,7 +325,6 @@ const ChatApp = () => {
           });
 
           const { session_id: newSessionId, user_message, bot_message } = res.data;
-          setSessionId(newSessionId);
 
           setMessages((prev) => {
             const filtered = prev.filter((m) => m.id !== tempUserMsg.id);
@@ -352,6 +357,8 @@ const ChatApp = () => {
           });
           // Refresh chat history sidebar
           fetchSessions();
+          // Reset session so next question creates a new sidebar entry
+          setSessionId(null);
         } catch (e) {
           console.error("Chat error:", e);
           setMessages((prev) => [
