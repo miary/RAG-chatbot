@@ -6,18 +6,12 @@
 2. [Functional Features](#2-functional-features)
 3. [Technology Stack](#3-technology-stack)
 4. [System Architecture](#4-system-architecture)
-5. [Backend Technical Documentation](#5-backend-technical-documentation)
-6. [Frontend Technical Documentation](#6-frontend-technical-documentation)
-7. [RAG Pipeline — Deep Dive](#7-rag-pipeline--deep-dive)
-8. [Database Schema](#8-database-schema)
-9. [API Reference](#9-api-reference)
-10. [Knowledge Base — Training Content](#10-knowledge-base--training-content)
-11. [Environment Configuration](#11-environment-configuration)
-12. [Docker Deployment](#12-docker-deployment)
-13. [Deployment & Infrastructure (Non-Docker)](#13-deployment--infrastructure-non-docker)
-14. [Performance Characteristics](#14-performance-characteristics)
-15. [Error Handling & Resilience](#15-error-handling--resilience)
-16. [Project Structure](#16-project-structure)
+5. [Local Models Setup](#5-local-models-setup)
+6. [Docker Deployment](#6-docker-deployment)
+7. [Environment Configuration](#7-environment-configuration)
+8. [API Reference](#8-api-reference)
+9. [RAG Pipeline](#9-rag-pipeline)
+10. [508 Accessibility Compliance](#10-508-accessibility-compliance)
 
 ---
 
@@ -25,95 +19,46 @@
 
 **CBP Training Assistant** is a full-stack, AI-powered training chatbot designed to help U.S. Customs and Border Protection personnel learn about policies, procedures, and best practices. It combines a **Retrieval-Augmented Generation (RAG)** pipeline with a **large language model (LLM)** to deliver contextually accurate, educational guidance drawn from a curated knowledge base of CBP training materials.
 
-The application presents a dark-themed, responsive chat interface where trainees can ask natural-language questions about border security, customs regulations, immigration law, and inspection procedures. The system uses **hybrid search** (dense + sparse vectors) to find the most relevant training content, then feeds that context to the LLM to synthesize a clear, educational answer.
-
 ### Key Capabilities
 
 | Capability | Description |
 |---|---|
-| **Hybrid Search** | Combines dense embeddings (nomic-embed-text-v1.5-Q with MRL) and sparse embeddings (BM25) using reciprocal rank fusion |
-| **Local Embedding Models** | Pre-downloaded models via Qdrant FastEmbed stored in `./models` directory for offline deployment |
-| **LLM Response Generation** | Ollama-hosted Llama 3.1 (8B) with system-prompt engineering and RAG context injection |
+| **Hybrid Search** | Combines dense embeddings (nomic-embed-text-v1.5 with MRL) and sparse embeddings (BM25) using reciprocal rank fusion |
+| **Local Embedding Models** | Pre-downloaded models via Qdrant FastEmbed stored in `./models` directory |
+| **Local LLM** | Ollama running locally with gemma4:latest model |
 | **WebSocket Streaming** | Real-time response streaming for better user experience |
-| **Multi-Turn Conversations** | Persistent sessions stored in PostgreSQL, enabling follow-up questions within the same context |
-| **5-Star Rating System** | Trainees can rate bot responses from 1-5 stars for quality monitoring |
-| **Real-Time Service Monitoring** | Live health checks for Ollama, Qdrant, and PostgreSQL displayed in the UI |
-| **Graceful Degradation** | Deterministic RAG-context fallback when the LLM is unreachable |
-| **Responsive Design** | Dark UI for desktop, tablet, and mobile with collapsible sidebar |
+| **5-Star Rating System** | Trainees can rate bot responses from 1-5 stars |
+| **508 Accessibility** | Full ARIA support, keyboard navigation, screen reader compatible |
+| **Responsive Design** | Dark UI for desktop, tablet, and mobile |
 
 ---
 
 ## 2. Functional Features
 
 ### 2.1 Chat Interface
-
-- **Welcome Screen**: Displays on first load or after clearing a chat. Shows the CBP Training Assistant bot avatar, a welcome heading, and a brief description of the system's capabilities.
-- **Message Input**: A text input field pinned to the bottom of the viewport. Supports both click-to-send (blue gradient send button) and Enter-key submission. Input is disabled while a response is being generated.
-- **User Messages**: Displayed as right-aligned blue bubbles with a user avatar and timestamp.
-- **Bot Messages**: Displayed as left-aligned white bubbles with the CBP Training Assistant CBP Training Assistant robot avatar, formatted text (bold, newlines), and a timestamp.
-- **Typing Indicator**: An animated spinner with "Searching CBP Training Assistant incidents..." text appears while the RAG + LLM pipeline is processing.
-- **Markdown-Like Rendering**: Bot responses render `**bold text**` as `<strong>` elements and preserve line breaks.
+- **Welcome Screen**: Bot avatar with welcome message
+- **Message Input**: Text input with Enter-key submission
+- **User Messages**: Right-aligned blue bubbles with timestamp
+- **Bot Messages**: Left-aligned white bubbles with markdown rendering
 
 ### 2.2 5-Star Rating System
+- Interactive star rating for each bot response
+- Ratings persisted to PostgreSQL
+- Aggregated in analytics dashboard
 
-Each bot response includes a rating section with:
-- **5 Interactive Stars** — Users can rate responses from 1 to 5 stars
-- Stars highlight in yellow when selected or hovered
-- Current rating is displayed as "(X/5)" next to the stars
-- Ratings are persisted to PostgreSQL via a PATCH API call
-- Rating data is aggregated in the analytics dashboard
-
-### 2.3 Real-Time WebSocket Streaming
-
-Chat responses are streamed in real-time via WebSocket connections:
-- **Connection**: Automatic WebSocket connection when starting a chat session
-- **Streaming Status**: Shows "Searching knowledge base..." during RAG retrieval, then "Generating response..." during LLM generation
-- **Live Text**: Bot responses appear character-by-character as they're generated
-- **Cursor Animation**: A blinking cursor indicates ongoing generation
-- **Fallback**: Automatically falls back to REST API if WebSocket connection fails
-- **WebSocket Endpoint**: `ws://host/ws/chat/{session_id}/`
+### 2.3 WebSocket Streaming
+- Real-time character-by-character response display
+- Streaming status indicators
+- Automatic REST API fallback
 
 ### 2.4 Chat History Sidebar
+- Session list ordered by recent activity
+- Click to load previous conversations
+- New Chat button to start fresh
 
-- **Session List**: Displays all past conversation sessions ordered by most recent activity. Each entry shows a truncated title (derived from the first user message) and a date.
-- **Session Loading**: Clicking a sidebar entry loads the full conversation from the backend, restoring all messages with their original timestamps and feedback states.
-- **New Chat Button** (`+`): Resets the current view to the welcome screen and creates a fresh session on the next message.
-- **Empty State**: When no sessions exist, shows a chat-bubble icon with "No chat history yet / Start a new conversation."
-
-### 2.4 Clear Chat
-
-The "Clear Chat" button in the sub-header:
-1. Sends a DELETE request to `/api/sessions/<id>/clear/` to remove all messages from the current session in PostgreSQL.
-2. Resets the UI to the welcome screen.
-3. Clears the active `session_id` so the next message creates a new session.
-
-### 2.5 Service Status Monitoring
-
-- **ADK Agent Status** (sidebar footer): Shows a colored status dot (teal = connected, red = disconnected) and descriptive text. Indicates the health of the Qdrant vector search service.
-- **Connected Badge** (sub-header): Displays aggregate connection status. Polls `/api/status/` every 30 seconds.
-- **Service Account Authentication Banner**: A teal-accented banner below the header confirming authentication status.
-
-### 2.6 Analytics Dashboard
-
-Accessible via the bar chart icon in the top header or by navigating to `/dashboard`. The dashboard provides two tabs:
-
-**Usage Metrics Tab:**
-- **Summary Cards**: Total sessions, total messages (user/bot breakdown), average messages per session, average rating
-- **Messages Over Time**: Bar chart showing daily user and bot message counts
-- **User Ratings Distribution**: Horizontal bar chart showing 5-star rating breakdown (5 stars to 1 star)
-
-**RAG Performance Tab:**
-- **Summary Cards**: Total responses, average RAG latency, average LLM latency, average RAG similarity score
-- **Latency Over Time**: Line chart showing daily RAG and LLM latency trends
-- **RAG Score Quality**: Pie chart categorizing responses as Excellent (≥0.7), Good (0.5-0.7), Fair (0.3-0.5), or Poor (<0.3)
-- **Response Time Distribution**: Horizontal bar chart showing response time buckets (Fast <5s, Normal 5-30s, Slow 30-60s, Very Slow >60s)
-
-### 2.7 Responsive & Mobile Design
-
-| Viewport | Behavior |
-|---|---|
-| **Desktop** (≥1024px) | Sidebar always visible. Full header with settings/user icons. |
-| **Tablet / Mobile** (<1024px) | Sidebar hidden by default. Hamburger menu icon appears in the header. Sidebar slides in as an overlay with a dark backdrop. Sub-header buttons stack vertically. Floating chatbot FAB hidden on mobile. |
+### 2.5 Analytics Dashboard
+- **Usage Metrics**: Total messages, sessions, ratings
+- **Performance Metrics**: RAG latency, LLM latency, retrieval scores
 
 ---
 
@@ -123,501 +68,274 @@ Accessible via the bar chart icon in the top header or by navigating to `/dashbo
 
 | Technology | Version | Purpose |
 |---|---|---|
-| **React** | 19.0.0 | UI component framework |
-| **React Router DOM** | 7.5.1 | Client-side routing |
-| **Axios** | 1.8.4 | HTTP client for API calls |
-| **Tailwind CSS** | 3.4.17 | Utility-first CSS framework |
-| **Lucide React** | 0.507.0 | SVG icon library (Settings, User, Send, ThumbsUp, ThumbsDown, Plus, Menu, etc.) |
-| **shadcn/ui** | — | Pre-built Radix UI components (available, used for design system foundation) |
-| **Inter** | Google Fonts | Primary typeface |
-| **CRACO** | 7.1.0 | Create React App configuration override |
+| **React** | 19.1.0 | UI framework |
+| **Axios** | 1.9.0 | HTTP client |
+| **Recharts** | 2.15.3 | Analytics charts |
+| **Lucide React** | 0.507.0 | Icons |
 
 ### 3.2 Backend
 
 | Technology | Version | Purpose |
 |---|---|---|
-| **Django** | 5.2 | Web framework (views, ORM, migrations) |
-| **Django REST Framework** | 3.16.1 | RESTful API serialization and views |
-| **django-cors-headers** | — | Cross-Origin Resource Sharing middleware |
-| **Gunicorn** | 25.1.0 | WSGI HTTP server (production-grade) |
-| **python-dotenv** | — | Environment variable management |
+| **Django** | 5.2 | Web framework |
+| **Django REST Framework** | 3.16.1 | REST API |
+| **Django Channels** | 4.3.2 | WebSocket support |
+| **Daphne** | 4.2.1 | ASGI server |
 
 ### 3.3 AI / ML
 
-| Technology | Version | Purpose |
-|---|---|---|
-| **Qdrant FastEmbed** | 0.8.0 | Local embedding generation via ONNX |
-| **nomic-embed-text** | v1.5-Q (quantized) | 768-dimensional dense embedding model (MRL-trained) |
-| **Qdrant/bm25** | — | BM25-based sparse embeddings for keyword matching |
-| **Ollama** (Python Client) | 0.6.1 | LLM inference client — connects to remote Ollama server |
-| **Llama 3.1 8B** | `llama3.1:8b` | Large language model for response generation |
+| Technology | Purpose |
+|---|---|
+| **Qdrant FastEmbed** | Local embedding generation (ONNX) |
+| **nomic-embed-text-v1.5** | Dense embeddings (768d → 256d MRL) |
+| **Qdrant/bm25** | Sparse embeddings (BM25) |
+| **Ollama** | Local LLM server |
+| **gemma4:latest** | Language model for response generation |
 
 ### 3.4 Databases
 
 | Technology | Version | Purpose |
 |---|---|---|
-| **PostgreSQL** | 15.16 | Primary relational database — stores sessions, messages, feedback |
-| **Qdrant** | 1.17.0+ (Remote) | Vector similarity search engine — remote instance at `148.230.92.74:6333` |
-| **psycopg2-binary** | 2.9.11 | PostgreSQL adapter for Python |
-| **qdrant-client** | 1.17.0 | Python client for Qdrant REST + gRPC API |
+| **PostgreSQL** | 15 | Sessions, messages, ratings |
+| **Qdrant** | 1.17 | Vector similarity search |
 
 ### 3.5 Infrastructure
 
 | Technology | Purpose |
 |---|---|
-| **Supervisor** | Process manager — runs Gunicorn, React dev server, Nginx proxy |
-| **Nginx** | Reverse proxy — routes `/api/*` to port 8001, all else to port 3000 |
+| **Docker Compose** | Container orchestration |
+| **Nginx** | Reverse proxy |
 
 ---
 
 ## 4. System Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         CLIENT (Browser)                             │
-│  ┌──────────────────────────────────────────────────────────────┐    │
-│  │  React 19 SPA                                                │    │
-│  │  ├── TopHeader    (branding, settings, user icon)            │    │
-│  │  ├── SubHeader    (auth badge, clear chat, connection badge) │    │
-│  │  ├── Sidebar      (chat history, ADK status)                 │    │
-│  │  ├── ChatArea     (messages, welcome, typing indicator)      │    │
-│  │  └── MessageInput (text field, send button)                  │    │
-│  └──────────────────────────┬───────────────────────────────────┘    │
-│                              │  Axios HTTP                           │
-└──────────────────────────────┼───────────────────────────────────────┘
-                               │
-                    ┌──────────▼──────────┐
-                    │   Nginx Proxy       │
-                    │  /api/* → :8001     │
-                    │  /*     → :3000     │
-                    └──────────┬──────────┘
-                               │
-              ┌────────────────▼─────────────────┐
-              │     Django 5 + DRF (port 8001)   │
-              │     Gunicorn WSGI Server          │
-              │                                   │
-              │  ┌─── views.py ────────────────┐  │
-              │  │ health_check                │  │
-              │  │ service_status               │  │
-              │  │ session_list / session_detail│  │
-              │  │ send_message (RAG + LLM)    │  │
-              │  │ message_feedback             │  │
-              │  │ ingest_data                  │  │
-              │  └──────────┬──────────────────┘  │
-              │             │                      │
-              │  ┌──────────▼──────────────────┐  │
-              │  │      RAG Pipeline            │  │
-              │  │  1. Encode query → 768-d vec │  │
-              │  │     (Ollama nomic-embed-text) │  │
-              │  │  2. Qdrant cosine search     │  │
-              │  │  3. Build RAG prompt         │  │
-              │  │  4. Ollama LLM generation    │  │
-              │  │  5. Fallback if LLM offline  │  │
-              │  └──┬──────────────┬───────────┘  │
-              │     │              │                │
-              └─────┼──────────────┼────────────────┘
-                    │              │
-        ┌───────────▼───┐  ┌──────▼────────────┐
-        │  PostgreSQL   │  │  Qdrant (Remote)  │
-        │  (port 5432)  │  │  148.230.92.74    │
-        │               │  │                    │
-        │ • ChatSession │  │ • cbp_incidents│
-        │ • ChatMessage │  │   collection       │
-        │   (feedback,  │  │ • 768-d vectors    │
-        │    sources)   │  │ • Cosine distance  │
-        └───────────────┘  └────────────────────┘
-
-                    ┌───────────────────────┐
-                    │  Ollama Server         │
-                    │  (Remote: 31.220.21   │
-                    │   .156:11434)          │
-                    │                       │
-                    │  Model: llama3.1:8b   │
-                    │  Context: 128k tokens │
-                    └───────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              DOCKER COMPOSE                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                  │
+│  │   nginx     │    │  frontend   │    │   backend   │                  │
+│  │  (proxy)    │◄───│   (React)   │    │  (Django)   │                  │
+│  │  :8080      │    │   :3000     │    │   :8001     │                  │
+│  └──────┬──────┘    └─────────────┘    └──────┬──────┘                  │
+│         │                                      │                         │
+│         │           ┌──────────────────────────┼──────────────────┐      │
+│         │           │                          │                  │      │
+│         │           ▼                          ▼                  ▼      │
+│         │    ┌─────────────┐           ┌─────────────┐    ┌───────────┐ │
+│         │    │  postgres   │           │   qdrant    │    │  ollama   │ │
+│         │    │   (DB)      │           │  (vectors)  │    │  (LLM)    │ │
+│         │    │   :5432     │           │   :6333     │    │  :11434   │ │
+│         │    └─────────────┘           └─────────────┘    └───────────┘ │
+│         │                                                                │
+│         └────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  VOLUMES:                                                                │
+│  ├── postgres_data     (PostgreSQL data)                                │
+│  ├── qdrant_data       (Vector database)                                │
+│  └── ./models          (Embedding + LLM models)                         │
+│      ├── models--nomic-ai--nomic-embed-text-v1.5/   (FastEmbed)         │
+│      ├── models--Qdrant--bm25/                      (FastEmbed)         │
+│      └── ollama/                                    (Ollama models)     │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Request Flow — `POST /api/chat/`
+### Services
 
-```
-User types "How do I fix error API-503?"
-    │
-    ▼
-1. Frontend sends POST /api/chat/ { message, session_id }
-    │
-    ▼
-2. Django view validates input (SendMessageSerializer)
-    │
-    ▼
-3. Session: get existing or create new (title = first 60 chars)
-    │
-    ▼
-4. Save user ChatMessage to PostgreSQL
-    │
-    ▼
-5. RAG Search:
-   a. Encode query with Ollama nomic-embed-text → 768-d vector
-   b. Qdrant query_points(collection="cbp_incidents", limit=3)
-   c. Returns top-3 documents with cosine similarity scores
-    │
-    ▼
-6. LLM Generation:
-   a. Build RAG prompt (system prompt + context docs + user question)
-   b. Send to Ollama llama3.1:8b via HTTP
-   c. If Ollama fails → _fallback_response() formats RAG context
-    │
-    ▼
-7. Save bot ChatMessage to PostgreSQL (with sources JSON)
-    │
-    ▼
-8. Return { session_id, user_message, bot_message } to frontend
-    │
-    ▼
-9. Frontend renders bot response with FormatText component
-   Displays "Was this helpful?" with thumbs up/down
-```
+| Service | Container | Port | Purpose |
+|---|---|---|---|
+| **postgres** | cbp-postgres | 5432 | Relational database |
+| **qdrant** | cbp-qdrant | 6333 | Vector database |
+| **ollama** | cbp-ollama | 11434 | Local LLM server |
+| **backend** | cbp-backend | 8001 | Django API + WebSocket |
+| **frontend** | cbp-frontend | 3000 | React application |
+| **nginx** | cbp-proxy | 8080 | Reverse proxy (entry point) |
 
 ---
 
-## 5. Backend Technical Documentation
+## 5. Local Models Setup
 
-### 5.1 Django Project Structure
+All models are stored locally in the `./models` directory for offline deployment.
 
-```
-backend/
-├── cbp_project/          # Django project configuration
-│   ├── settings.py            # Database, middleware, app config, Ollama/Qdrant settings
-│   ├── urls.py                # Root URL conf → includes chat.urls under /api/
-│   ├── wsgi.py                # WSGI entry point for Gunicorn
-│   └── asgi.py                # ASGI entry point (unused, available for WebSocket future)
-├── chat/                      # Main application
-│   ├── models.py              # ChatSession, ChatMessage Django ORM models
-│   ├── views.py               # 8 API view functions (DRF @api_view decorators)
-│   ├── urls.py                # 8 URL patterns mapped to views
-│   ├── serializers.py         # 5 DRF serializers for request/response validation
-│   ├── rag_service.py         # Qdrant + SentenceTransformer vector search service
-│   ├── llm_service.py         # Ollama client + prompt engineering + fallback logic
-│   ├── mock_data.py           # 12 CBP Training Assistant incident documents for knowledge base
-│   └── migrations/            # Django database migrations
-├── manage.py                  # Django management CLI
-└── .env                       # Environment variables
-```
+### 5.1 Embedding Models (FastEmbed)
 
-### 5.2 Service Layer Design
+| Model | Type | Size | Purpose |
+|---|---|---|---|
+| `nomic-ai/nomic-embed-text-v1.5` | Dense | ~547 MB | Semantic similarity (768d → 256d MRL) |
+| `Qdrant/bm25` | Sparse | ~20 MB | Keyword matching |
 
-The backend follows a **layered service architecture**:
-
-| Layer | File | Responsibility |
-|---|---|---|
-| **API Layer** | `views.py` | HTTP request handling, validation, response formatting |
-| **Serialization Layer** | `serializers.py` | Input validation and output serialization (DRF) |
-| **RAG Service** | `rag_service.py` | Embedding generation, Qdrant collection management, vector search |
-| **LLM Service** | `llm_service.py` | Prompt construction, Ollama API calls, fallback logic |
-| **Data Layer** | `models.py` | Django ORM models mapped to PostgreSQL tables |
-| **Knowledge Base** | `mock_data.py` | Static incident document corpus for RAG ingestion |
-
-### 5.3 Lazy-Loaded Singletons
-
-Both the Ollama clients and the Qdrant client use a **lazy-loading singleton pattern** to avoid cold-start penalties on every request:
-
-```python
-# rag_service.py
-_ollama_embed_client = None   # ollama.Client for nomic-embed-text
-_qdrant_client = None         # QdrantClient(host, port)
-
-def get_ollama_embed_client():
-    global _ollama_embed_client
-    if _ollama_embed_client is None:
-        _ollama_embed_client = Client(host=settings.OLLAMA_BASE_URL)
-    return _ollama_embed_client
-```
-
-```python
-# llm_service.py
-_ollama_client = None  # ollama.Client for llama3.1:8b
-
-def get_ollama_client():
-    global _ollama_client
-    if _ollama_client is None:
-        _ollama_client = Client(host=settings.OLLAMA_BASE_URL)
-    return _ollama_client
-```
-
-This means the first request incurs a small delay to establish the connection, but all subsequent requests reuse the cached client instances.
-
-### 5.4 RAG Prompt Engineering
-
-The `build_rag_prompt()` function constructs a structured prompt that:
-
-1. **System Role**: Defines the bot persona — "CBP Training Assistant CBP Training Assistant, a technical support assistant"
-2. **Context Injection**: Inserts the top-3 retrieved documents with their title, category, severity, content, and resolution
-3. **User Question**: Appends the original user query
-4. **Instruction**: Asks the model to be "concise but thorough" and reference specific error codes
-
-```
-You are CBP Training Assistant CBP Training Assistant, a technical support assistant...
-
-=== Retrieved Context ===
---- Document 1 ---
-Title: API Gateway 503 Service Unavailable
-Category: API
-Severity: Critical
-Content: A 503 Service Unavailable error from the CBP Training Assistant API gateway...
-Resolution: Check pod status, review logs, verify resource limits, check HPA.
---- Document 2 ---
-...
-=== End Context ===
-
-User Question: How do I fix error API-503?
-
-Provide a helpful, accurate response...
-```
-
-### 5.5 LLM Fallback Mechanism
-
-When the remote Ollama server is unreachable (network timeout, server down, out of memory), the `_fallback_response()` function provides a **deterministic, structured response** based solely on the RAG-retrieved documents:
-
-- If **no documents** match: Returns a "no information found" message with support contact info.
-- If the **top match has low relevance** (score < 0.05): Presents the closest match with a caveat.
-- If the **top match is relevant**: Formats a detailed answer with:
-  - Document title, category, and severity
-  - Full content
-  - Recommended resolution
-  - List of related incidents (from documents 2-3 with score > 0.1)
-
-This ensures the chatbot **never returns an empty or broken response**, even when the LLM is offline.
-
----
-
-## 6. Frontend Technical Documentation
-
-### 6.1 Component Architecture
-
-```
-App.js (ChatApp)
-├── Sidebar.jsx            # Chat history list, ADK agent status, new chat button
-├── TopHeader.jsx          # CBP Training Assistant CBP Training Assistant branding, settings icon, user icon, mobile hamburger
-├── SubHeader.jsx          # Auth badge, "CBP Training Assistant Support Chat" title, Clear Chat, Connected badge
-└── ChatArea.jsx           # Main content area
-    ├── WelcomeState       # Centered robot icon + welcome text (shown when no messages)
-    ├── BotMessage          # Left-aligned white bubble with avatar, formatted text, feedback
-    │   └── FormatText     # Parses **bold** and \n newlines in bot responses
-    ├── UserMessage         # Right-aligned blue bubble with user avatar
-    └── TypingIndicator    # Animated spinner shown during LLM processing
-```
-
-### 6.2 State Management
-
-All state is managed with React's `useState` and `useCallback` hooks in the root `ChatApp` component:
-
-| State Variable | Type | Description |
-|---|---|---|
-| `messages` | `Array<Message>` | Current conversation messages |
-| `chatHistory` | `Array<Session>` | All past sessions for the sidebar |
-| `inputValue` | `string` | Current text in the message input |
-| `showWelcome` | `boolean` | Whether to show the welcome screen vs. messages |
-| `sidebarOpen` | `boolean` | Mobile sidebar open/closed state |
-| `sessionId` | `string \| null` | Active session UUID |
-| `isLoading` | `boolean` | Whether a chat request is in-flight |
-| `serviceStatus` | `object` | Ollama/Qdrant/PostgreSQL connection status |
-| `agentStatus` | `object` | ADK agent display status (dot color + text) |
-
-### 6.3 Optimistic UI Updates
-
-When a user sends a message:
-
-1. A **temporary user message** is immediately added to the `messages` array (with a `temp-` prefixed ID) for instant visual feedback.
-2. The input field is cleared and `isLoading` is set to `true`.
-3. The `TypingIndicator` component renders while the backend processes.
-4. Upon receiving the backend response, the temporary message is **replaced** with the server-confirmed message, and the bot response is appended.
-5. If the API call fails, an error message is displayed as a bot bubble.
-
-### 6.4 Color Palette
-
-| Element | Hex Code | Usage |
-|---|---|---|
-| Main Background | `#0a1628` | Sidebar, input bar |
-| Chat Area Background | `#111b2e` | Message viewport |
-| Header Gradient | `#0c1a32 → #0a387b` | Top header bar |
-| Primary Blue | `#6893ff` | Bot avatar border, accent color, active feedback |
-| User Bubble | `#3b6fe0` | User message background |
-| Send Button Gradient | `#8080ff → #00429d` | Send button |
-| Clear Chat Gradient | `#1d2d49 → #0a387b` | Clear chat button |
-| Status Teal | `#00AAAA` | Connected indicators, auth checkmarks |
-| Status Red | `#ff4444` | Disconnected indicator |
-| Light Text | `#BCCBF2` | Secondary sidebar text |
-| Border | `#2a3a5c` | Sidebar borders, separators |
-
-### 6.5 Typography
-
-- **Font Family**: Inter (loaded via Google Fonts CDN), with system fallbacks
-- **Weights Used**: 300 (light), 400 (regular), 500 (medium), 600 (semibold), 700 (bold)
-- **Icon Library**: Lucide React — all icons are SVG-based, tree-shakable
-
----
-
-## 7. RAG Pipeline — Deep Dive
-
-### 7.1 Local Embedding Models with Qdrant FastEmbed
-
-The application uses **Qdrant FastEmbed** for local embedding generation, with models pre-downloaded to the `./models` directory for offline Docker deployment:
-
-**Dense Model (nomic-embed-text with MRL):**
-| Property | Value |
-|---|---|
-| Model | `nomic-ai/nomic-embed-text-v1.5` |
-| Full Dimensions | 768 |
-| **MRL Dimensions** | **256** (truncated and normalized) |
-| Location | `./models/` (FastEmbed cache) |
-| Inference | Local CPU via ONNX Runtime |
-
-**Matryoshka Representation Learning (MRL):**
-nomic-embed-text is trained with MRL, meaning the first N dimensions capture the most important semantic information. We truncate the 768-dim vectors to 256 dimensions and re-normalize, achieving:
-- **~3x faster** similarity search
-- **~3x less** memory usage
-- **Minimal quality loss** - semantic features preserved in first 256 dims
-
-**Sparse Model (BM25):**
-| Property | Value |
-|---|---|
-| Model | `Qdrant/bm25` |
-| Type | BM25-based sparse embeddings for keyword matching |
-| Location | `./models/` (FastEmbed cache) |
-| Inference | Local via FastEmbed |
-
-**Downloading Models:**
+**Download embedding models:**
 ```bash
-# Install FastEmbed and download models
 pip install fastembed
 python download_models.py
 ```
 
-This downloads both models to `./models/` directory (~550MB total).
+### 5.2 LLM Model (Ollama)
 
-### 7.2 Hybrid Search
+| Model | Size | Purpose |
+|---|---|---|
+| `gemma4:latest` | ~5 GB | Response generation |
 
-The RAG pipeline uses **hybrid search** combining dense and sparse vectors:
+**Download Ollama model:**
+```bash
+python download_ollama_model.py
+```
 
-1. **Dense Search**: Semantic similarity using MRL-truncated nomic-embed-text (256d)
-2. **Sparse Search**: Keyword matching using BM25 sparse embeddings
-3. **Fusion**: Reciprocal Rank Fusion (RRF) combines both result sets
+This script:
+1. Starts a temporary Ollama Docker container
+2. Downloads the model to `./models/ollama/`
+3. Cleans up the temporary container
 
-This provides better retrieval quality than either method alone.
+### 5.3 Model Directory Structure
 
-### 7.3 Vector Database Configuration
+```
+models/
+├── models--nomic-ai--nomic-embed-text-v1.5/
+│   ├── blobs/
+│   │   └── model.onnx              # Dense embedding model
+│   └── snapshots/
+├── models--Qdrant--bm25/
+│   └── ...                         # BM25 sparse model
+└── ollama/
+    └── models/
+        ├── blobs/                  # Model weights (~5 GB)
+        └── manifests/              # Model metadata
+```
 
-| Property | Value |
+---
+
+## 6. Docker Deployment
+
+### 6.1 Prerequisites
+
+| Requirement | Minimum |
 |---|---|
-| Engine | Qdrant (containerized or remote) |
-| Collection Name | `cbp_training` |
-| Dense Vector Size | **256** (MRL truncated from 768) |
-| Sparse Vectors | BM25 (variable length) |
-| Distance Metric | Cosine Similarity |
-| Documents Stored | 12 |
+| Docker Engine | 24.0+ |
+| Docker Compose | 2.20+ |
+| RAM | 8 GB |
+| Disk | 15 GB (models + images + data) |
 
-### 7.4 Search Parameters
+### 6.2 Quick Start
 
-| Parameter | Value | Description |
-|---|---|---|
-| `top_k` | 3 | Number of documents retrieved per query |
-| Distance | Cosine | Normalized similarity (0 = orthogonal, 1 = identical) |
-| Score Threshold | 0.05 | Below this, the fallback labels the match as "may not directly address your question" |
+```bash
+# 1. Clone the repository
+git clone <repository-url>
+cd cbp-training-assistant
 
-### 7.4 Ingestion Pipeline
+# 2. Download embedding models
+pip install fastembed
+python download_models.py
 
+# 3. Download Ollama model
+python download_ollama_model.py
+
+# 4. Create environment file
+cp .env.docker .env
+
+# 5. Start all services
+docker compose up -d --build
+
+# 6. View logs
+docker compose logs -f backend
+
+# 7. Access the application
+open http://localhost:8080
 ```
-mock_data.py (12 documents)
-    │
-    ▼
-ingest_documents()
-    │
-    ├── Extract 'content' field from each document
-    ├── Batch-encode all texts via Ollama nomic-embed-text (768-d)
-    ├── Create PointStruct(id, vector, payload) for each
-    └── Upsert into Qdrant collection "cbp_incidents"
+
+### 6.3 Docker Compose Services
+
+```yaml
+services:
+  postgres:      # PostgreSQL 15
+  qdrant:        # Qdrant v1.17
+  ollama:        # Ollama with gemma4:latest
+  backend:       # Django 5 + Daphne
+  frontend:      # React 19 + Nginx
+  nginx:         # Reverse proxy
 ```
 
-Each document's **payload** in Qdrant contains:
-- `title` — Incident title
-- `content` — Full descriptive text (used for embedding)
-- `category` — Incident category (e.g., "API", "Security")
-- `severity` — Critical / High / Medium / Low
-- `resolution` — Recommended fix
-- `error_code` — Machine-readable error identifier
+### 6.4 Useful Commands
+
+```bash
+# Start services
+docker compose up -d
+
+# Stop services
+docker compose down
+
+# Stop and remove volumes
+docker compose down -v
+
+# View logs
+docker compose logs -f backend
+docker compose logs -f ollama
+
+# Rebuild specific service
+docker compose up -d --build backend
+
+# Check service status
+docker compose ps
+```
 
 ---
 
-## 8. Database Schema
+## 7. Environment Configuration
 
-### 8.1 PostgreSQL — `chat_chatsession`
+### 7.1 Docker Environment (`.env.docker`)
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | `UUID` | PRIMARY KEY, auto-generated | Unique session identifier |
-| `title` | `VARCHAR(255)` | BLANK allowed | Derived from first user message (truncated to 60 chars) |
-| `created_at` | `TIMESTAMP WITH TZ` | Auto-set on creation | Session creation time |
-| `updated_at` | `TIMESTAMP WITH TZ` | Auto-set on every save | Last activity time |
+```bash
+# PostgreSQL
+PG_DB_NAME=cbp_db
+PG_DB_USER=cbp_user
+PG_DB_PASSWORD=cbp_pass
 
-**Ordering**: `-updated_at` (most recent first)
+# Qdrant
+QDRANT_COLLECTION=cbp_training
 
-### 8.2 PostgreSQL — `chat_chatmessage`
+# Ollama (local container)
+OLLAMA_BASE_URL=http://ollama:11434
+OLLAMA_MODEL=gemma4:latest
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | `UUID` | PRIMARY KEY, auto-generated | Unique message identifier |
-| `session_id` | `UUID` | FOREIGN KEY → ChatSession, CASCADE DELETE | Parent session |
-| `message_type` | `VARCHAR(4)` | `'user'` or `'bot'` | Who sent the message |
-| `text` | `TEXT` | NOT NULL | Message content |
-| `timestamp` | `TIMESTAMP WITH TZ` | Auto-set on creation | When the message was created |
-| `feedback` | `VARCHAR(4)` | `'none'`, `'up'`, `'down'` | User feedback on bot responses |
-| `sources` | `JSONB` | Default `[]` | RAG source documents `[{title, score}]` |
+# Embedding Models
+MODELS_DIR=/app/models
+DENSE_MODEL_NAME=nomic-ai/nomic-embed-text-v1.5
+SPARSE_MODEL_NAME=Qdrant/bm25
+MRL_EMBEDDING_DIM=256
 
-**Ordering**: `timestamp` (chronological within a session)
+# Ports
+PROXY_PORT=8080
+```
 
-### 8.3 Qdrant — `cbp_incidents` Collection
+### 7.2 Key Environment Variables
 
-| Field | Type | Description |
+| Variable | Default | Description |
 |---|---|---|
-| `id` | `int` | Document identifier (1–12) |
-| `vector` | `float[768]` | nomic-embed-text embedding of the `content` field |
-| `payload.title` | `string` | Incident title |
-| `payload.content` | `string` | Full incident description |
-| `payload.category` | `string` | One of 12 categories |
-| `payload.severity` | `string` | Critical, High, Medium, Low |
-| `payload.resolution` | `string` | Recommended fix |
-| `payload.error_code` | `string` | Machine-readable code (e.g., `API-503`) |
+| `OLLAMA_BASE_URL` | `http://ollama:11434` | Ollama API endpoint (local container) |
+| `OLLAMA_MODEL` | `gemma4:latest` | LLM model for response generation |
+| `DENSE_MODEL_NAME` | `nomic-ai/nomic-embed-text-v1.5` | Dense embedding model |
+| `SPARSE_MODEL_NAME` | `Qdrant/bm25` | Sparse embedding model |
+| `MRL_EMBEDDING_DIM` | `256` | Truncated embedding dimension |
+| `QDRANT_COLLECTION` | `cbp_training` | Vector collection name |
 
 ---
 
-## 9. API Reference
+## 8. API Reference
 
-**Base URL**: `http://<host>/api`
-
-### 9.1 Health Check
+### 8.1 Health Check
 
 ```
 GET /api/
+Response: {"message": "CBP Training Assistant API is running", "status": "ok"}
 ```
 
-**Response** `200 OK`:
-```json
-{
-  "message": "CBP Training Assistant CBP Training Assistant API is running",
-  "status": "ok"
-}
-```
-
----
-
-### 9.2 Service Status
+### 8.2 Service Status
 
 ```
 GET /api/status/
-```
-
-**Response** `200 OK`:
-```json
-{
+Response: {
   "connected": true,
   "services": {
     "ollama": true,
@@ -627,726 +345,99 @@ GET /api/status/
 }
 ```
 
-The `connected` field is `true` only when **all three** services are reachable.
-
----
-
-### 9.3 List Sessions
-
-```
-GET /api/sessions/
-```
-
-**Response** `200 OK`:
-```json
-[
-  {
-    "id": "675137fe-7c05-4235-aec8-32631b28e1c8",
-    "title": "How do I fix error API-503?",
-    "created_at": "2026-02-21T16:42:39.100Z",
-    "updated_at": "2026-02-21T16:43:46.100Z",
-    "message_count": 2,
-    "last_message_preview": "Based on the retrieved context, the 503 Service Unavailable error is rela..."
-  }
-]
-```
-
----
-
-### 9.4 Create Session
-
-```
-POST /api/sessions/
-Content-Type: application/json
-
-{
-  "title": "Optional session title"
-}
-```
-
-**Response** `201 Created`:
-```json
-{
-  "id": "<uuid>",
-  "title": "Optional session title",
-  "created_at": "...",
-  "updated_at": "...",
-  "messages": [],
-  "last_message": null
-}
-```
-
----
-
-### 9.5 Get Session Detail
-
-```
-GET /api/sessions/<uuid:session_id>/
-```
-
-**Response** `200 OK`:
-```json
-{
-  "id": "<uuid>",
-  "title": "...",
-  "created_at": "...",
-  "updated_at": "...",
-  "messages": [
-    {
-      "id": "<uuid>",
-      "session": "<uuid>",
-      "message_type": "user",
-      "text": "How do I fix error API-503?",
-      "timestamp": "2026-02-21T16:42:39.163Z",
-      "feedback": "none",
-      "sources": []
-    },
-    {
-      "id": "<uuid>",
-      "session": "<uuid>",
-      "message_type": "bot",
-      "text": "Based on the retrieved context...",
-      "timestamp": "2026-02-21T16:43:46.076Z",
-      "feedback": "up",
-      "sources": [
-        { "title": "API Gateway 503 Service Unavailable", "score": 0.573 },
-        { "title": "Authentication Failure - Service Account Lockout", "score": 0.328 }
-      ]
-    }
-  ],
-  "last_message": { ... }
-}
-```
-
-**Error** `404 Not Found`: `{"error": "Session not found"}`
-
----
-
-### 9.6 Delete Session
-
-```
-DELETE /api/sessions/<uuid:session_id>/
-```
-
-**Response** `204 No Content`
-
----
-
-### 9.7 Clear Session Messages
-
-```
-DELETE /api/sessions/<uuid:session_id>/clear/
-```
-
-Removes all messages but **keeps the session record**.
-
-**Response** `200 OK`:
-```json
-{ "status": "cleared" }
-```
-
----
-
-### 9.8 Send Message (RAG + LLM)
+### 8.3 Send Message (RAG + LLM)
 
 ```
 POST /api/chat/
 Content-Type: application/json
 
-{
-  "message": "How do I resolve a 503 service unavailable error?",
-  "session_id": "<uuid>"  // optional — omit to auto-create session
-}
-```
+{"message": "What are primary inspection procedures?"}
 
-**Response** `200 OK`:
-```json
-{
-  "session_id": "792c70e5-8cc4-4e0d-9f72-cd051cfe011c",
-  "user_message": {
-    "id": "c8c491fb-1945-451d-8120-4c7a55ef0172",
-    "session": "792c70e5-...",
-    "message_type": "user",
-    "text": "How do I resolve a 503 service unavailable error?",
-    "timestamp": "2026-02-21T16:42:39.163091Z",
-    "feedback": "none",
-    "sources": []
-  },
+Response: {
+  "session_id": "<uuid>",
+  "user_message": {...},
   "bot_message": {
-    "id": "a3a769da-59b3-48d6-95a7-8417c55d1843",
-    "session": "792c70e5-...",
-    "message_type": "bot",
-    "text": "Based on the retrieved context, the 503 Service Unavailable error...",
-    "timestamp": "2026-02-21T16:43:46.076063Z",
-    "feedback": "none",
+    "text": "Based on our CBP training materials...",
     "sources": [
-      { "title": "API Gateway 503 Service Unavailable", "score": 0.573 },
-      { "title": "Authentication Failure - Service Account Lockout", "score": 0.328 },
-      { "title": "Incident Data Sync Delay", "score": 0.309 }
+      {"title": "Primary Inspection Procedures", "score": 0.85}
     ]
   }
 }
 ```
 
-**Validation Errors** `400 Bad Request`:
-```json
-{ "message": ["This field is required."] }
-```
-
-**Typical Response Times**: 30–60 seconds (dominated by Ollama LLM inference)
-
----
-
-### 9.9 Update Message Feedback
+### 8.4 WebSocket Streaming
 
 ```
-PATCH /api/messages/<uuid:message_id>/feedback/
-Content-Type: application/json
+ws://localhost:8080/ws/chat/{session_id}/
 
-{
-  "feedback": "up"   // "up", "down", or "none"
-}
+Send: {"message": "What is ESTA?"}
+Receive: {"type": "status", "status": "Searching knowledge base..."}
+Receive: {"type": "chunk", "text": "The Electronic System..."}
+Receive: {"type": "done", "sources": [...]}
 ```
 
-**Response** `200 OK`: Returns the updated message object.
-
----
-
-### 9.10 Ingest Documents
+### 8.5 Ingest Training Data
 
 ```
 POST /api/ingest/
-```
-
-Triggers ingestion of all 12 CBP Training Assistant incident documents from `mock_data.py` into Qdrant.
-
-**Response** `200 OK`:
-```json
-{
-  "status": "success",
-  "documents_ingested": 12
-}
+Response: {"status": "success", "documents_ingested": 12}
 ```
 
 ---
 
-### 9.11 Usage Analytics
+## 9. RAG Pipeline
 
-```
-GET /api/analytics/usage/
-```
+### 9.1 Hybrid Search
 
-Returns usage analytics for the dashboard including message counts, session statistics, and feedback distribution over the last 30 days.
+The RAG pipeline uses hybrid search combining:
 
-**Response** `200 OK`:
-```json
-{
-  "summary": {
-    "total_sessions": 5,
-    "total_messages": 24,
-    "total_user_messages": 12,
-    "total_bot_messages": 12,
-    "avg_messages_per_session": 4.8
-  },
-  "messages_over_time": [
-    {
-      "date": "2026-03-23",
-      "user_count": 12,
-      "bot_count": 12,
-      "total": 24
-    }
-  ],
-  "sessions_over_time": [
-    {
-      "date": "2026-03-23",
-      "count": 5
-    }
-  ],
-  "feedback_distribution": {
-    "thumbs_up": 3,
-    "thumbs_down": 1,
-    "no_feedback": 8
-  }
-}
-```
+1. **Dense Search**: Semantic similarity using nomic-embed-text (256d MRL)
+2. **Sparse Search**: Keyword matching using BM25
+3. **Fusion**: Reciprocal Rank Fusion (RRF) combines results
+
+### 9.2 Matryoshka Representation Learning (MRL)
+
+nomic-embed-text is trained with MRL, allowing truncation from 768 to 256 dimensions with minimal quality loss:
+- ~3x faster similarity search
+- ~3x less memory usage
+- Semantic features preserved in first 256 dims
+
+### 9.3 Knowledge Base
+
+12 CBP training modules covering:
+- Primary & Secondary Inspection Procedures
+- Immigration Document Verification
+- Customs Declaration & Duty Assessment
+- Agricultural Inspection
+- Currency Reporting
+- Visa Waiver Program & ESTA
+- Trusted Traveler Programs
+- Human Trafficking Indicators
+- Use of Force & De-escalation
+- TECS & Database Queries
+- Ethics & Professional Conduct
 
 ---
 
-### 9.12 RAG Performance Analytics
+## 10. 508 Accessibility Compliance
 
-```
-GET /api/analytics/rag/
-```
+### 10.1 ARIA Support
+- `role` attributes for semantic meaning
+- `aria-label` for interactive elements
+- `aria-live` for dynamic content
 
-Returns RAG pipeline performance metrics including latency statistics, similarity scores, and distributions over the last 30 days.
+### 10.2 Keyboard Navigation
+- Tab navigation through all interactive elements
+- Enter key to submit messages
+- Visible focus indicators
 
-**Response** `200 OK`:
-```json
-{
-  "summary": {
-    "total_responses": 12,
-    "avg_rag_latency_ms": 271.5,
-    "avg_llm_latency_ms": 45000.0,
-    "avg_total_latency_ms": 45271.5,
-    "avg_rag_score": 0.558,
-    "max_rag_latency_ms": 350,
-    "max_llm_latency_ms": 120000,
-    "min_rag_latency_ms": 200,
-    "min_llm_latency_ms": 15000,
-    "max_rag_score": 0.85,
-    "min_rag_score": 0.32
-  },
-  "latency_over_time": [
-    {
-      "date": "2026-03-23",
-      "avg_rag_ms": 271.5,
-      "avg_llm_ms": 45000.0,
-      "avg_total_ms": 45271.5,
-      "avg_score": 0.558,
-      "count": 12
-    }
-  ],
-  "score_distribution": {
-    "excellent": 2,
-    "good": 6,
-    "fair": 3,
-    "poor": 1
-  },
-  "latency_distribution": {
-    "fast": 0,
-    "normal": 4,
-    "slow": 5,
-    "very_slow": 3
-  }
-}
-```
+### 10.3 Screen Reader Support
+- Descriptive labels for all actions
+- Hidden decorative elements with `aria-hidden`
+- Semantic HTML structure
 
 ---
 
-## 10. Knowledge Base — Ingested Documents
+## License
 
-The system ships with 12 pre-authored CBP Training Assistant incident documents spanning 12 categories:
-
-| # | Error Code | Title | Category | Severity |
-|---|---|---|---|---|
-| 1 | `AUTH-001` | Authentication Failure — Service Account Lockout | Authentication | High |
-| 2 | `DB-002` | Database Connection Timeout — Spanner Vector Search | Database | Critical |
-| 3 | `API-503` | API Gateway 503 Service Unavailable | API | Critical |
-| 4 | `SEC-010` | Certificate Expiration Warning | Security | High |
-| 5 | `PERF-005` | Memory Leak in CBP Training Assistant Processor Service | Performance | Medium |
-| 6 | `DOC-001` | User Guide and Documentation Access | Documentation | Low |
-| 7 | `LOG-003` | Log Aggregation Pipeline Failure | Logging | Medium |
-| 8 | `RBAC-007` | Role-Based Access Control (RBAC) Permission Denied | Authorization | High |
-| 9 | `SYNC-004` | Incident Data Sync Delay | Data Sync | Medium |
-| 10 | `DEPLOY-002` | Deployment Rollback Procedure | Deployment | High |
-| 11 | `NET-008` | SSL Handshake Failure with Upstream Services | Networking | High |
-| 12 | `K8S-001` | Kubernetes Pod CrashLoopBackOff | Infrastructure | Critical |
-
-Each document contains a detailed natural-language description (100–300 words) covering symptoms, root causes, diagnostic commands, and step-by-step resolution procedures.
-
----
-
-## 11. Environment Configuration
-
-### Backend — `/app/backend/.env`
-
-| Variable | Default | Description |
-|---|---|---|
-| `PG_DB_NAME` | `cbp_db` | PostgreSQL database name |
-| `PG_DB_USER` | `cbp_user` | PostgreSQL username |
-| `PG_DB_PASSWORD` | `cbp_pass` | PostgreSQL password |
-| `PG_DB_HOST` | `localhost` | PostgreSQL host |
-| `PG_DB_PORT` | `5432` | PostgreSQL port |
-| `OLLAMA_BASE_URL` | `http://31.220.21.156:11434` | Ollama API server URL (local or remote) |
-| `OLLAMA_MODEL` | `llama3.1:8b` | Ollama model identifier for chat/generation |
-| `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Ollama model identifier for embeddings |
-| `QDRANT_HOST` | `148.230.92.74` | Qdrant server host (remote instance) |
-| `QDRANT_PORT` | `6333` | Qdrant HTTP API port |
-| `QDRANT_COLLECTION` | `cbp_incidents` | Qdrant collection name for document vectors |
-| `DJANGO_SECRET_KEY` | (auto-generated) | Django secret key for production |
-
-### Frontend — `/app/frontend/.env`
-
-| Variable | Description |
-|---|---|
-| `REACT_APP_BACKEND_URL` | External URL of the backend (set by infrastructure) |
-
----
-
-## 12. Docker Deployment
-
-### 12.1 Prerequisites
-
-| Requirement | Minimum Version |
-|---|---|
-| Docker Engine | 24.0+ |
-| Docker Compose | 2.20+ (V2 plugin) |
-| Available RAM | 4 GB (2 GB for backend + embedding model, 512 MB PostgreSQL, 256 MB Qdrant, 256 MB Nginx/frontend) |
-| Available Disk | 8 GB (Docker images + model cache + database storage) |
-| Network Access | Outbound to Ollama server at `OLLAMA_BASE_URL` |
-
-### 12.2 Quick Start
-
-```bash
-# 1. Clone the repository
-git clone <repository-url>
-cd cbp-frds
-
-# 2. Create environment file from template
-cp .env.docker .env
-
-# 3. (Optional) Edit .env to customize settings
-#    - Change OLLAMA_BASE_URL if using a different Ollama server
-#    - Set DJANGO_SECRET_KEY to a secure random value
-#    - Set REACT_APP_BACKEND_URL to your public domain
-
-# 4. Build and start all services
-docker compose up -d --build
-
-# 5. Watch backend startup (migrations + data ingestion)
-docker compose logs -f backend
-
-# 6. Open the application
-#    http://localhost:8080
-```
-
-### 12.3 Architecture — Containerized
-
-```
-                         ┌──────────────────────┐
-                         │  Browser              │
-                         │  http://localhost:8080 │
-                         └──────────┬───────────┘
-                                    │
-                         ┌──────────▼───────────┐
-                         │  nginx (port 80)      │
-                         │  cbp-proxy        │
-                         │                       │
-                         │  /api/* → backend:8001│
-                         │  /*     → frontend:3000│
-                         └──┬──────────────┬────┘
-                            │              │
-              ┌─────────────▼──┐   ┌───────▼──────────┐
-              │  backend:8001  │   │  frontend:3000   │
-              │  Django 5 +    │   │  Nginx serving   │
-              │  Gunicorn +    │   │  React 19 build  │
-              │  RAG Pipeline  │   └──────────────────┘
-              └──┬──────┬──┬──┘
-                 │      │  │
-        ┌────────▼──┐                    ┌─────────────────┐
-        │ postgres  │                    │  Ollama (remote) │
-        │ port 5432 │                    │  :11434          │
-        └───────────┘                    └─────────────────┘
-         (volume)                         (external)
-
-                      ┌──────────────────────┐
-                      │  Qdrant (remote)     │
-                      │  148.230.92.74:6333  │
-                      └──────────────────────┘
-                       (external)
-```
-
-### 12.4 Docker Files Reference
-
-```
-/app
-├── docker-compose.yml              # Orchestration — 4 services (Qdrant is remote)
-├── .env.docker                     # Template environment variables
-├── .dockerignore                   # Build exclusions
-├── Makefile                        # Convenience commands
-└── docker/
-    ├── backend.Dockerfile          # Multi-stage: deps → model cache → runtime
-    ├── frontend.Dockerfile         # Multi-stage: Node build → Nginx serve
-    ├── requirements.txt            # Clean Python dependencies for Docker
-    ├── entrypoint-backend.sh       # Waits for deps, runs migrations, ingests data
-    ├── entrypoint-frontend.sh      # Runtime env injection into JS bundles
-    ├── nginx-frontend.conf         # Nginx config for SPA serving
-    └── nginx-proxy.conf            # Reverse proxy: /api/* → backend, /* → frontend
-```
-
-### 12.5 Service Details
-
-| Service | Image | Container Name | Internal Port | External Port | Health Check |
-|---|---|---|---|---|---|
-| `postgres` | `postgres:15-alpine` | `cbp-postgres` | 5432 | 5432 | `pg_isready` |
-| `backend` | Custom (Python 3.11) | `cbp-backend` | 8001 | 8001 | `curl /api/` |
-| `frontend` | Custom (Nginx 1.27) | `cbp-frontend` | 3000 | 3000 | `curl /` |
-| `nginx` | `nginx:1.27-alpine` | `cbp-proxy` | 80 | 8080 | — |
-
-**External Dependencies (not containerized):**
-- **Qdrant**: Remote instance at `148.230.92.74:6333`
-- **Ollama**: Remote instance at `http://31.220.21.156:11434`
-
-### 12.6 Backend Dockerfile — Lean Build
-
-The backend Dockerfile uses a **2-stage build**:
-
-```
-Stage 1: base    → System deps (libpq, gcc, curl)
-Stage 2: deps    → pip install from requirements.txt
-Stage 3: runtime → Copies app source + entrypoint
-```
-
-**Why no local ML model?**
-Unlike the previous architecture that used `sentence-transformers/all-MiniLM-L6-v2` (requiring ~160 MB model download + PyTorch ~1.5 GB), all embeddings are now generated by the **remote Ollama server** using `nomic-embed-text`. This means:
-- **No PyTorch dependency** — the Docker image is ~500 MB smaller
-- **No model caching stage** — builds are faster
-- **Unified ML inference** — both LLM and embeddings go through the same Ollama server
-
-### 12.7 Frontend Dockerfile — Runtime Environment Injection
-
-React apps embed environment variables at **build time** (`process.env.REACT_APP_*`). To allow runtime configuration (e.g., changing the backend URL without rebuilding), the frontend Dockerfile uses a two-step approach:
-
-1. **Build time**: Sets `REACT_APP_BACKEND_URL=__BACKEND_URL_PLACEHOLDER__`
-2. **Runtime**: `entrypoint-frontend.sh` replaces the placeholder string in all compiled JS bundles with the actual `REACT_APP_BACKEND_URL` value from the container's environment
-
-This allows the same Docker image to be deployed to different environments just by changing the env var.
-
-### 12.8 Backend Entrypoint — Startup Sequence
-
-The `entrypoint-backend.sh` script performs a **5-step initialization** before starting Gunicorn:
-
-| Step | Action | Wait For |
-|---|---|---|
-| 1 | Wait for PostgreSQL | `psycopg2.connect()` succeeds |
-| 2 | Wait for Qdrant | `curl /healthz` returns 200 |
-| 3 | Run Django migrations | `manage.py migrate --noinput` |
-| 4 | Collect static files | `manage.py collectstatic` |
-| 5 | Ingest documents into Qdrant | `ensure_collection()` + `ingest_documents()` |
-
-Steps 1–2 use retry loops with 2-second intervals, ensuring the backend doesn't crash if PostgreSQL or Qdrant is slow to start.
-
-Step 5 uses Qdrant's **upsert** operation, making it idempotent — running it multiple times won't create duplicate documents.
-
-### 12.9 Makefile Commands
-
-```bash
-make help              # Show all available commands
-make build             # Build all Docker images
-make up                # Start all services (detached)
-make up-logs           # Start and follow logs
-make down              # Stop all services
-make down-clean        # Stop and DELETE all data volumes
-make restart           # Restart all services
-make restart-backend   # Restart only backend
-make logs              # Follow all logs
-make logs-backend      # Follow backend logs only
-make status            # Show container status
-make health            # Check health of all services
-make ingest            # Re-ingest CBP Training Assistant data into Qdrant
-make shell-backend     # Open bash in backend container
-make shell-db          # Open psql in PostgreSQL
-make migrate           # Run Django migrations
-```
-
-### 12.10 Environment Variables
-
-Copy `.env.docker` to `.env` and customize:
-
-```bash
-# ---- PostgreSQL ----
-PG_DB_NAME=cbp_db
-PG_DB_USER=cbp_user
-PG_DB_PASSWORD=cbp_pass          # CHANGE IN PRODUCTION
-
-# ---- Ollama (Remote LLM + Embeddings) ----
-OLLAMA_BASE_URL=http://31.220.21.156:11434
-OLLAMA_MODEL=llama3.1:8b
-OLLAMA_EMBED_MODEL=nomic-embed-text
-
-# ---- Django ----
-DJANGO_SECRET_KEY=change-me-use-long-random-string  # CHANGE IN PRODUCTION
-
-# ---- Gunicorn ----
-GUNICORN_WORKERS=2                    # Set to (2 × CPU cores + 1) in production
-GUNICORN_TIMEOUT=300                  # Increase if Ollama is very slow
-
-# ---- Ports ----
-PROXY_PORT=8080                       # Public-facing port
-BACKEND_EXTERNAL_PORT=8001            # Direct backend access (optional)
-FRONTEND_EXTERNAL_PORT=3000           # Direct frontend access (optional)
-
-# ---- Frontend ----
-REACT_APP_BACKEND_URL=http://localhost:8080   # Set to public domain in prod
-```
-
-### 12.11 Production Deployment Checklist
-
-- [ ] Set `DJANGO_SECRET_KEY` to a cryptographically random 50+ character string
-- [ ] Set `PG_DB_PASSWORD` to a strong password
-- [ ] Set `DJANGO_DEBUG=False`
-- [ ] Set `REACT_APP_BACKEND_URL` to your public domain (e.g., `https://frds.example.com`)
-- [ ] Set `GUNICORN_WORKERS` to `(2 × CPU cores + 1)`
-- [ ] Configure TLS termination (Nginx or load balancer)
-- [ ] Set up external PostgreSQL backup strategy
-- [ ] Set up Qdrant snapshot backups
-- [ ] Monitor Ollama server availability
-- [ ] Set up log aggregation (e.g., `docker compose logs` to Fluentd/ELK)
-
-### 12.12 Scaling Considerations
-
-| Component | Scaling Strategy |
-|---|---|
-| **Backend** | Increase `GUNICORN_WORKERS` or run multiple backend replicas behind a load balancer |
-| **PostgreSQL** | Use managed service (AWS RDS, GCP Cloud SQL) with read replicas |
-| **Qdrant** | Qdrant supports distributed mode with sharding for large document collections |
-| **Ollama** | Use a GPU-accelerated server or cloud LLM API for faster inference |
-| **Frontend** | Already static — serve via CDN for global distribution |
-
----
-
-## 13. Deployment & Infrastructure (Non-Docker)
-
-### Process Management (Supervisor)
-
-| Process | Command | Port |
-|---|---|---|
-| `backend` | `gunicorn cbp_project.wsgi:application --bind 0.0.0.0:8001 --workers 1 --timeout 300 --reload` | 8001 |
-| `frontend` | `craco start` (React dev server) | 3000 |
-| `nginx-proxy` | Reverse proxy routing | 80/443 |
-
-### Service Dependencies (must be running)
-
-| Service | Port | Start Command |
-|---|---|---|
-| PostgreSQL 15 | 5432 | `pg_ctlcluster 15 main start` |
-| Qdrant (remote) | 6333 | Running at `148.230.92.74:6333` |
-| Ollama (remote) | 11434 | Running at `http://31.220.21.156:11434` |
-
-### First-Time Setup Sequence
-
-```bash
-# 1. Start PostgreSQL
-pg_ctlcluster 15 main start
-
-# 2. Create database
-sudo -u postgres psql -c "CREATE USER cbp_user WITH PASSWORD 'cbp_pass';"
-sudo -u postgres psql -c "CREATE DATABASE cbp_db OWNER cbp_user;"
-
-# 3. Run Django migrations
-cd /app/backend
-python manage.py migrate
-
-# 4. Verify remote Qdrant is accessible
-curl http://148.230.92.74:6333/healthz
-
-# 5. Start backend (via supervisor)
-sudo supervisorctl restart backend
-
-# 6. Ingest knowledge base into remote Qdrant
-curl -X POST http://localhost:8001/api/ingest/
-
-# 7. Verify all services
-curl http://localhost:8001/api/status/
-```
-
----
-
-## 14. Performance Characteristics
-
-| Metric | Value | Notes |
-|---|---|---|
-| **Embedding Latency** | ~10–50 ms | Per query, remote Ollama nomic-embed-text (includes network round-trip) |
-| **Qdrant Search Latency** | ~2 ms | Cosine similarity over 12 documents (sub-linear at scale) |
-| **Ollama LLM Latency** | 30–60 s | Cold start ~38s (model loading), warm ~10–15s per response |
-| **Total Chat Response Time** | 10–65 s | Dominated by LLM inference time |
-| **Fallback Response Time** | <100 ms | When Ollama is unavailable, deterministic response from RAG context |
-| **Frontend Time-to-Interactive** | <2 s | React SPA with Tailwind CSS |
-| **Session Load Time** | <200 ms | PostgreSQL query for session + messages |
-| **Embedding Model Memory** | 0 MB (remote) | Embeddings generated by remote Ollama — no local model needed |
-| **Gunicorn Workers** | 1 | Single worker to conserve memory in constrained environments |
-| **Gunicorn Timeout** | 300 s | Set high to accommodate Ollama cold starts |
-
----
-
-## 15. Error Handling & Resilience
-
-### Backend Error Handling
-
-| Scenario | Handling |
-|---|---|
-| Ollama server unreachable | `llm_service.py` catches the exception and invokes `_fallback_response()` — user receives a structured answer from RAG context alone |
-| Qdrant search fails | `views.py` catches the exception, sets `context_docs = []`, LLM generates response without context |
-| Invalid session ID | Returns `404 Not Found` with `{"error": "Session not found"}` |
-| Invalid message format | DRF serializer validation returns `400 Bad Request` with field-level errors |
-| Both Ollama and Qdrant down | Fallback returns a "no information found" message with support contact |
-
-### Frontend Error Handling
-
-| Scenario | Handling |
-|---|---|
-| Chat API fails | An error bot message is injected: "Sorry, I encountered an error processing your request." |
-| Service status unreachable | Status polling continues every 30s; UI shows last known state |
-| Feedback API fails | Error logged to console; UI state is not corrupted |
-| Session load fails | Error logged to console; user stays on current view |
-
----
-
-## 16. Project Structure
-
-```
-/app
-├── docker-compose.yml                 # Docker orchestration (5 services)
-├── .env.docker                        # Environment variable template
-├── .dockerignore                      # Docker build exclusions
-├── Makefile                           # Convenience commands (make up, make logs, etc.)
-├── README.md                          # This file
-├── contracts.md                       # API contract documentation
-├── docker/
-│   ├── backend.Dockerfile             # Multi-stage Python 3.11 + model cache
-│   ├── frontend.Dockerfile            # Multi-stage Node 20 build → Nginx serve
-│   ├── requirements.txt               # Clean Python deps for Docker
-│   ├── entrypoint-backend.sh          # Wait for deps → migrate → ingest → gunicorn
-│   ├── entrypoint-frontend.sh         # Runtime env var injection into JS bundles
-│   ├── nginx-frontend.conf            # SPA serving config
-│   └── nginx-proxy.conf              # Reverse proxy: /api/* → backend, /* → frontend
-├── backend/
-│   ├── .env                           # Environment configuration
-│   ├── manage.py                      # Django CLI
-│   ├── requirements.txt               # Python dependencies (pip freeze)
-│   ├── cbp_project/
-│   │   ├── __init__.py
-│   │   ├── settings.py                # Django settings (DB, Ollama, Qdrant config)
-│   │   ├── urls.py                    # Root URL configuration
-│   │   ├── wsgi.py                    # Gunicorn WSGI entry point
-│   │   └── asgi.py                    # ASGI entry point
-│   └── chat/
-│       ├── __init__.py
-│       ├── models.py                  # ChatSession, ChatMessage ORM models
-│       ├── views.py                   # 8 DRF API view functions
-│       ├── urls.py                    # 8 URL patterns
-│       ├── serializers.py             # 5 DRF serializers
-│       ├── rag_service.py             # Qdrant + SentenceTransformer service
-│       ├── llm_service.py             # Ollama client + prompt + fallback
-│       ├── mock_data.py               # 12 CBP Training Assistant incident documents
-│       ├── admin.py                   # Django admin (default)
-│       ├── apps.py                    # App configuration
-│       ├── tests.py                   # Test stubs
-│       └── migrations/
-│           └── 0001_initial.py        # Initial schema migration
-├── frontend/
-│   ├── .env                           # REACT_APP_BACKEND_URL
-│   ├── package.json                   # Node dependencies
-│   ├── tailwind.config.js             # Tailwind CSS configuration
-│   └── src/
-│       ├── App.js                     # Root component, state management, API integration
-│       ├── App.css                    # Global styles, scrollbar, FAB, responsive rules
-│       ├── index.js                   # React DOM entry point
-│       ├── index.css                  # Tailwind base + CSS variables (dark theme)
-│       ├── data/
-│       │   └── mockData.js            # Original mock data (retained for reference)
-│       ├── components/
-│       │   ├── ChatArea.jsx           # Messages, welcome state, input bar, typing indicator
-│       │   ├── Sidebar.jsx            # Chat history, ADK status, new chat
-│       │   ├── TopHeader.jsx          # Branding, settings, user, hamburger
-│       │   ├── SubHeader.jsx          # Auth badge, support chat title, clear/connected
-│       │   └── ui/                    # shadcn/ui component library (40+ components)
-│       ├── hooks/
-│       │   └── use-toast.js           # Toast notification hook
-│       └── lib/
-│           └── utils.js               # Tailwind class merge utility
-```
-
----
-
-*CBP Training Assistant CBP Training Assistant — Built with Django 5.2, React 19, Ollama (Llama 3.1 + nomic-embed-text), Qdrant 1.17, and PostgreSQL.*
+This project is for U.S. Customs and Border Protection training purposes.
