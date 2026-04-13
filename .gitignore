@@ -102,3 +102,12 @@ htmlcov/
 *.temp
 models/models--nomic-ai--nomic-embed-text-v1.5/blobs/147d5aa88c2101237358e17796cf3a227cead1ec304ec34b465bb08e9d952965.incomplete
 models/models--nomic-ai--nomic-embed-text-v1.5/blobs/b4342336debaea79de872370664b0aaeb67dea4605513d00ee236ea871a81f27
+-e 
+# Environment and credential files
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
