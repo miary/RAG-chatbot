@@ -239,10 +239,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
         return results, top_score
 
     async def stream_llm_response(self, query, context_docs):
-        """Stream response from Ollama LLM."""
+        """Stream response from Ollama LLM using Gemma 4 prompt best practices."""
         import asyncio
         from concurrent.futures import ThreadPoolExecutor
-        from .llm_service import build_rag_prompt, get_ollama_client
+        from .llm_service import build_rag_prompt, get_ollama_client, SYSTEM_PROMPT, GEMMA4_OPTIONS
 
         prompt = build_rag_prompt(query, context_docs)
 
@@ -253,20 +253,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 stream = client.chat(
                     model=settings.OLLAMA_MODEL,
                     messages=[
-                        {
-                            'role': 'system',
-                            'content': (
-                                'You are FRDS, a helpful technical support chatbot for '
-                                'the FRDS system. You help users troubleshoot incidents '
-                                'and find solutions based on historical data. Keep responses '
-                                'concise and actionable.'
-                            ),
-                        },
-                        {
-                            'role': 'user',
-                            'content': prompt,
-                        },
+                        {'role': 'system', 'content': SYSTEM_PROMPT},
+                        {'role': 'user', 'content': prompt},
                     ],
+                    options=GEMMA4_OPTIONS,
                     stream=True,
                 )
                 
