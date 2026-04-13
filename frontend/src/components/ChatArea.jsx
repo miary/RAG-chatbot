@@ -210,7 +210,7 @@ const ChatArea = ({
   const hasStreamingMessage = messages.some(m => m.isStreaming);
 
   return (
-    <div className="flex-1 flex flex-col" style={{ backgroundColor: '#111b2e' }}>
+    <div className="flex-1 flex flex-col min-h-0" style={{ backgroundColor: '#111b2e' }}>
       {/* Messages or Welcome */}
       {showWelcome ? (
         <WelcomeState />

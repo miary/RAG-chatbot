@@ -47,24 +47,25 @@ const ChatApp = () => {
   }, []);
 
   // Fetch chat sessions
+  const fetchSessions = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API}/sessions/`);
+      setChatHistory(
+        res.data.map((s) => ({
+          id: s.id,
+          title: s.title || "Untitled conversation",
+          date: new Date(s.updated_at).toLocaleDateString(),
+          messageCount: s.message_count,
+        }))
+      );
+    } catch (e) {
+      console.error("Failed to fetch sessions:", e);
+    }
+  }, []);
+
   useEffect(() => {
-    const fetchSessions = async () => {
-      try {
-        const res = await axios.get(`${API}/sessions/`);
-        setChatHistory(
-          res.data.map((s) => ({
-            id: s.id,
-            title: s.title || "Untitled conversation",
-            date: new Date(s.updated_at).toLocaleDateString(),
-            messageCount: s.message_count,
-          }))
-        );
-      } catch (e) {
-        console.error("Failed to fetch sessions:", e);
-      }
-    };
     fetchSessions();
-  }, [sessionId]);
+  }, [fetchSessions, sessionId]);
 
   // WebSocket connection management
   const connectWebSocket = useCallback((sid) => {
@@ -185,7 +186,8 @@ const ChatApp = () => {
               }
             : m
         ));
-        // Refresh session list
+        // Refresh chat history sidebar immediately
+        fetchSessions();
         break;
 
       case 'error':
@@ -212,7 +214,7 @@ const ChatApp = () => {
       default:
         console.log('Unknown WS message type:', data.type);
     }
-  }, [streamingMessageId]);
+  }, [streamingMessageId, fetchSessions]);
 
   // Cleanup WebSocket on unmount
   useEffect(() => {
@@ -348,6 +350,8 @@ const ChatApp = () => {
               },
             ];
           });
+          // Refresh chat history sidebar
+          fetchSessions();
         } catch (e) {
           console.error("Chat error:", e);
           setMessages((prev) => [
@@ -381,7 +385,7 @@ const ChatApp = () => {
 
       wsRef.current = ws;
     }
-  }, [inputValue, sessionId, isLoading, isStreaming, handleWebSocketMessage]);
+  }, [inputValue, sessionId, isLoading, isStreaming, handleWebSocketMessage, fetchSessions]);
 
   const handleFeedback = useCallback(async (messageId, rating) => {
     try {
