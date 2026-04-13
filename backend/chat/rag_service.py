@@ -34,8 +34,6 @@ _qdrant_client = None
 
 # Model paths - loaded from local 'models' directory
 MODELS_DIR = os.environ.get('MODELS_DIR', '/app/models')
-DENSE_MODEL_PATH = os.path.join(MODELS_DIR, 'dense')
-SPARSE_MODEL_PATH = os.path.join(MODELS_DIR, 'sparse')
 
 # FastEmbed model names
 DENSE_MODEL_NAME = os.environ.get('DENSE_MODEL_NAME', 'nomic-ai/nomic-embed-text-v1.5')
@@ -64,35 +62,14 @@ def get_dense_model():
     if _dense_model is None:
         from fastembed import TextEmbedding
         
-        # Check if model exists locally
-        cache_location_file = os.path.join(DENSE_MODEL_PATH, 'CACHE_LOCATION.txt')
+        logger.info('Loading dense model: %s from cache: %s', DENSE_MODEL_NAME, MODELS_DIR)
         
-        if os.path.exists(cache_location_file):
-            # Model was downloaded to a cache directory
-            with open(cache_location_file, 'r') as f:
-                cache_info = f.read()
-            logger.info('Dense model cache info: %s', cache_info.strip())
-            # Load from the parent models directory as cache
-            _dense_model = TextEmbedding(
-                model_name=DENSE_MODEL_NAME,
-                cache_dir=MODELS_DIR,
-            )
-        elif os.path.exists(DENSE_MODEL_PATH) and any(
-            f.endswith(('.onnx', '.json')) for f in os.listdir(DENSE_MODEL_PATH) if os.path.isfile(os.path.join(DENSE_MODEL_PATH, f))
-        ):
-            # Model files exist directly in the path
-            logger.info('Loading dense model from local path: %s', DENSE_MODEL_PATH)
-            _dense_model = TextEmbedding(
-                model_name=DENSE_MODEL_NAME,
-                cache_dir=os.path.dirname(DENSE_MODEL_PATH),
-            )
-        else:
-            # Fallback: Download model (will use default cache or MODELS_DIR)
-            logger.warning('Local dense model not found, downloading: %s', DENSE_MODEL_NAME)
-            _dense_model = TextEmbedding(
-                model_name=DENSE_MODEL_NAME,
-                cache_dir=MODELS_DIR,
-            )
+        # FastEmbed uses HuggingFace-style cache structure
+        # Models are stored in: MODELS_DIR/models--{org}--{model}/
+        _dense_model = TextEmbedding(
+            model_name=DENSE_MODEL_NAME,
+            cache_dir=MODELS_DIR,
+        )
         
         # Test to get dimension
         test_emb = list(_dense_model.embed(["test"]))[0]
@@ -111,32 +88,12 @@ def get_sparse_model():
         try:
             from fastembed import SparseTextEmbedding
             
-            # Check if model exists locally
-            cache_location_file = os.path.join(SPARSE_MODEL_PATH, 'CACHE_LOCATION.txt')
+            logger.info('Loading sparse model: %s from cache: %s', SPARSE_MODEL_NAME, MODELS_DIR)
             
-            if os.path.exists(cache_location_file):
-                # Model was downloaded to a cache directory
-                with open(cache_location_file, 'r') as f:
-                    cache_info = f.read()
-                logger.info('Sparse model cache info: %s', cache_info.strip())
-                _sparse_model = SparseTextEmbedding(
-                    model_name=SPARSE_MODEL_NAME,
-                    cache_dir=MODELS_DIR,
-                )
-            elif os.path.exists(SPARSE_MODEL_PATH) and os.listdir(SPARSE_MODEL_PATH):
-                # Model files exist
-                logger.info('Loading sparse model from local path: %s', SPARSE_MODEL_PATH)
-                _sparse_model = SparseTextEmbedding(
-                    model_name=SPARSE_MODEL_NAME,
-                    cache_dir=os.path.dirname(SPARSE_MODEL_PATH),
-                )
-            else:
-                # Fallback: Download model
-                logger.warning('Local sparse model not found, downloading: %s', SPARSE_MODEL_NAME)
-                _sparse_model = SparseTextEmbedding(
-                    model_name=SPARSE_MODEL_NAME,
-                    cache_dir=MODELS_DIR,
-                )
+            _sparse_model = SparseTextEmbedding(
+                model_name=SPARSE_MODEL_NAME,
+                cache_dir=MODELS_DIR,
+            )
             
             logger.info('BM25 sparse model loaded via FastEmbed.')
         except Exception as e:
