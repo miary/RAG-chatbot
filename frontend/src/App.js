@@ -26,10 +26,21 @@ const ChatApp = () => {
   const [wsConnected, setWsConnected] = useState(false);
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
+  const [historyLimit, setHistoryLimit] = useState(() => {
+    const saved = localStorage.getItem('cbp_history_limit');
+    return saved ? parseInt(saved, 10) : 20;
+  });
   const [serviceStatus, setServiceStatus] = useState({
     connected: false,
     services: { ollama: false, qdrant: false, postgresql: false },
   });
+
+  // Persist history limit
+  const updateHistoryLimit = useCallback((newLimit) => {
+    const clamped = Math.max(1, Math.min(newLimit, 100));
+    setHistoryLimit(clamped);
+    localStorage.setItem('cbp_history_limit', String(clamped));
+  }, []);
 
   // Fetch service status on mount
   useEffect(() => {
@@ -46,26 +57,31 @@ const ChatApp = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch chat sessions
-  const fetchSessions = useCallback(async () => {
+  // Fetch global Q&A conversations
+  const fetchConversations = useCallback(async () => {
     try {
-      const res = await axios.get(`${API}/sessions/`);
+      const res = await axios.get(`${API}/conversations/`, {
+        params: { limit: historyLimit },
+      });
       setChatHistory(
-        res.data.map((s) => ({
-          id: s.id,
-          title: s.title || "Untitled conversation",
-          date: new Date(s.updated_at).toLocaleDateString(),
-          messageCount: s.message_count,
+        res.data.map((c) => ({
+          id: c.id,
+          title: c.question,
+          answer: c.answer,
+          answerId: c.answer_id,
+          date: new Date(c.timestamp).toLocaleDateString(),
+          rating: c.rating,
+          sources: c.sources || [],
         }))
       );
     } catch (e) {
-      console.error("Failed to fetch sessions:", e);
+      console.error("Failed to fetch conversations:", e);
     }
-  }, []);
+  }, [historyLimit]);
 
   useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions, sessionId]);
+    fetchConversations();
+  }, [fetchConversations]);
 
   // WebSocket connection management
   const connectWebSocket = useCallback((sid) => {
@@ -187,7 +203,7 @@ const ChatApp = () => {
             : m
         ));
         // Refresh chat history sidebar immediately
-        fetchSessions();
+        fetchConversations();
         // Reset session so next question creates a new sidebar entry
         setSessionId(null);
         if (wsRef.current) {
@@ -220,7 +236,7 @@ const ChatApp = () => {
       default:
         console.log('Unknown WS message type:', data.type);
     }
-  }, [streamingMessageId, fetchSessions]);
+  }, [streamingMessageId, fetchConversations]);
 
   // Cleanup WebSocket on unmount
   useEffect(() => {
@@ -356,7 +372,7 @@ const ChatApp = () => {
             ];
           });
           // Refresh chat history sidebar
-          fetchSessions();
+          fetchConversations();
           // Reset session so next question creates a new sidebar entry
           setSessionId(null);
         } catch (e) {
@@ -392,7 +408,7 @@ const ChatApp = () => {
 
       wsRef.current = ws;
     }
-  }, [inputValue, sessionId, isLoading, isStreaming, handleWebSocketMessage, fetchSessions]);
+  }, [inputValue, sessionId, isLoading, isStreaming, handleWebSocketMessage, fetchConversations]);
 
   const handleFeedback = useCallback(async (messageId, rating) => {
     try {
@@ -436,9 +452,10 @@ const ChatApp = () => {
         chatHistory={chatHistory}
         connectionStatus={serviceStatus}
         onNewChat={handleNewChat}
-        onSelectChat={loadSession}
         isOpen={sidebarOpen}
         onToggle={toggleSidebar}
+        historyLimit={historyLimit}
+        onHistoryLimitChange={updateHistoryLimit}
       />
 
       <main className="chat-main-area" role="main">

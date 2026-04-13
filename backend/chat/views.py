@@ -201,6 +201,56 @@ def message_feedback(request, message_id):
     return Response(ChatMessageSerializer(message).data)
 
 
+# ---------- Conversations (global Q&A history) ----------
+
+@api_view(['GET'])
+def conversation_list(request):
+    """Return recent Q&A pairs across all sessions, ordered by most recent.
+
+    Query params:
+        limit (int): Max number of Q&A pairs to return (default 20, max 100).
+    """
+    try:
+        limit = int(request.query_params.get('limit', 20))
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 100))
+
+    # Get the most recent user messages (each represents a question)
+    user_messages = (
+        ChatMessage.objects
+        .filter(message_type='user')
+        .select_related('session')
+        .order_by('-timestamp')[:limit]
+    )
+
+    conversations = []
+    for umsg in user_messages:
+        # Find the bot response that immediately follows this user message
+        bot_msg = (
+            ChatMessage.objects
+            .filter(
+                session=umsg.session,
+                message_type='bot',
+                timestamp__gt=umsg.timestamp,
+            )
+            .order_by('timestamp')
+            .first()
+        )
+
+        conversations.append({
+            'id': str(umsg.id),
+            'question': umsg.text,
+            'answer': bot_msg.text if bot_msg else None,
+            'answer_id': str(bot_msg.id) if bot_msg else None,
+            'timestamp': umsg.timestamp.isoformat(),
+            'rating': bot_msg.rating if bot_msg else None,
+            'sources': bot_msg.sources if bot_msg else [],
+        })
+
+    return Response(conversations)
+
+
 # ---------- Ingest (admin) ----------
 
 @api_view(['POST'])

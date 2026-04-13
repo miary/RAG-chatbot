@@ -14,6 +14,9 @@ urlpatterns = [
     # Chat
     path('chat/', views.send_message, name='send-message'),
 
+    # Conversations (global Q&A history)
+    path('conversations/', views.conversation_list, name='conversation-list'),
+
     # Feedback
     path('messages/<uuid:message_id>/feedback/', views.message_feedback, name='message-feedback'),
 

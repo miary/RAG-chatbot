@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { Plus, MessageSquare, X, Loader2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, MessageSquare, Settings2, ChevronDown } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -8,52 +8,25 @@ import {
   DialogDescription,
 } from './ui/dialog';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const LIMIT_OPTIONS = [10, 20, 30, 50, 100];
 
-const Sidebar = ({ chatHistory, connectionStatus, onNewChat, onSelectChat, isOpen, onToggle }) => {
+const Sidebar = ({
+  chatHistory,
+  connectionStatus,
+  onNewChat,
+  isOpen,
+  onToggle,
+  historyLimit,
+  onHistoryLimitChange,
+}) => {
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewData, setPreviewData] = useState(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewItem, setPreviewItem] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
 
-  const handleChatClick = useCallback(async (chat) => {
-    setPreviewLoading(true);
+  const handleChatClick = (item) => {
+    setPreviewItem(item);
     setPreviewOpen(true);
-    setPreviewData(null);
-
-    try {
-      const res = await fetch(`${API}/sessions/${chat.id}/`);
-      const session = await res.json();
-
-      // Pair user questions with bot responses
-      const pairs = [];
-      const msgs = session.messages || [];
-      for (let i = 0; i < msgs.length; i++) {
-        if (msgs[i].message_type === 'user') {
-          const botMsg = msgs[i + 1]?.message_type === 'bot' ? msgs[i + 1] : null;
-          pairs.push({ question: msgs[i].text, answer: botMsg?.text || '(No response yet)' });
-        }
-      }
-
-      setPreviewData({
-        title: chat.title,
-        date: chat.date,
-        pairs,
-        sessionId: chat.id,
-      });
-    } catch (e) {
-      console.error('Failed to load session preview:', e);
-      setPreviewData({ title: chat.title, date: chat.date, pairs: [], error: true });
-    } finally {
-      setPreviewLoading(false);
-    }
-  }, []);
-
-  const handleOpenFullChat = useCallback(() => {
-    if (previewData?.sessionId && onSelectChat) {
-      setPreviewOpen(false);
-      onSelectChat(previewData.sessionId);
-    }
-  }, [previewData, onSelectChat]);
+  };
 
   return (
     <>
@@ -70,7 +43,7 @@ const Sidebar = ({ chatHistory, connectionStatus, onNewChat, onSelectChat, isOpe
       <aside
         className={`
           fixed lg:relative z-50 lg:z-auto
-          h-full w-[220px] min-w-[220px]
+          h-full w-[240px] min-w-[240px]
           flex flex-col
           border-r border-[#2a3a5c]
           transition-transform duration-300 ease-in-out
@@ -81,23 +54,58 @@ const Sidebar = ({ chatHistory, connectionStatus, onNewChat, onSelectChat, isOpe
         role="complementary"
         aria-label="Chat history sidebar"
       >
-        {/* Chat History Header */}
+        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#2a3a5c]">
           <span className="text-white text-sm font-semibold tracking-wide" id="chat-history-label">
             Chat History
           </span>
-          <button
-            onClick={onNewChat}
-            className="text-white hover:text-[#6893ff] transition-colors w-6 h-6 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#6893ff] focus:ring-offset-2 focus:ring-offset-[#0a1628] rounded"
-            aria-label="Start new chat"
-            title="Start new chat"
-            data-testid="new-chat-btn"
-          >
-            <Plus size={18} aria-hidden="true" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowSettings((s) => !s)}
+              className="text-white/60 hover:text-[#6893ff] transition-colors w-6 h-6 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#6893ff] focus:ring-offset-2 focus:ring-offset-[#0a1628] rounded"
+              aria-label="Chat history settings"
+              title="Settings"
+              data-testid="history-settings-btn"
+            >
+              <Settings2 size={15} aria-hidden="true" />
+            </button>
+            <button
+              onClick={onNewChat}
+              className="text-white hover:text-[#6893ff] transition-colors w-6 h-6 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#6893ff] focus:ring-offset-2 focus:ring-offset-[#0a1628] rounded"
+              aria-label="Start new chat"
+              title="Start new chat"
+              data-testid="new-chat-btn"
+            >
+              <Plus size={18} aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
-        {/* Chat History List / Empty State */}
+        {/* Settings dropdown */}
+        {showSettings && (
+          <div className="px-3 py-2 border-b border-[#2a3a5c] bg-[#0d1526]" data-testid="history-settings-panel">
+            <label className="text-[#BCCBF2] text-[11px] block mb-1">
+              Show last
+            </label>
+            <div className="flex items-center gap-2">
+              <select
+                value={historyLimit}
+                onChange={(e) => onHistoryLimitChange(parseInt(e.target.value, 10))}
+                className="flex-1 bg-[#1c2e4c] text-white text-xs rounded px-2 py-1.5 border border-[#2a3a5c] focus:outline-none focus:border-[#6893ff]"
+                data-testid="history-limit-select"
+                aria-label="Number of conversations to display"
+              >
+                {LIMIT_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    {n} conversations
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
+        {/* Chat History List */}
         <nav
           className="flex-1 flex flex-col px-2 py-2 overflow-y-auto"
           aria-labelledby="chat-history-label"
@@ -111,16 +119,18 @@ const Sidebar = ({ chatHistory, connectionStatus, onNewChat, onSelectChat, isOpe
             </div>
           ) : (
             <ul className="w-full space-y-1 list-none p-0 m-0" role="list">
-              {chatHistory.map((chat, index) => (
-                <li key={chat.id || index}>
+              {chatHistory.map((item, index) => (
+                <li key={item.id || index}>
                   <button
-                    onClick={() => handleChatClick(chat)}
-                    className="w-full text-left p-2.5 rounded-lg hover:bg-[#1c2e4c] cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-[#6893ff] focus:ring-inset"
-                    aria-label={`Preview chat: ${chat.title}, from ${chat.date}`}
+                    onClick={() => handleChatClick(item)}
+                    className="w-full text-left p-2.5 rounded-lg hover:bg-[#1c2e4c] cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-[#6893ff] focus:ring-inset group"
+                    aria-label={`View answer for: ${item.title}`}
                     data-testid={`chat-history-item-${index}`}
                   >
-                    <p className="text-white text-xs truncate">{chat.title}</p>
-                    <p className="text-[#BCCBF2] text-[10px] mt-0.5">{chat.date}</p>
+                    <p className="text-white text-xs truncate group-hover:text-[#6893ff] transition-colors">
+                      {item.title}
+                    </p>
+                    <p className="text-[#BCCBF2] text-[10px] mt-0.5">{item.date}</p>
                   </button>
                 </li>
               ))}
@@ -148,7 +158,7 @@ const Sidebar = ({ chatHistory, connectionStatus, onNewChat, onSelectChat, isOpe
         </div>
       </aside>
 
-      {/* Chat Preview Dialog */}
+      {/* Q&A Preview Dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent
           className="max-w-lg max-h-[80vh] flex flex-col"
@@ -157,57 +167,31 @@ const Sidebar = ({ chatHistory, connectionStatus, onNewChat, onSelectChat, isOpe
         >
           <DialogHeader>
             <DialogTitle className="text-white text-base font-semibold pr-6">
-              {previewData?.title || 'Chat Preview'}
+              Conversation
             </DialogTitle>
             <DialogDescription className="text-[#BCCBF2] text-xs">
-              {previewData?.date || ''}
+              {previewItem?.date || ''}
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto mt-3 space-y-4 pr-1" data-testid="chat-preview-messages">
-            {previewLoading ? (
-              <div className="flex items-center justify-center py-10">
-                <Loader2 size={24} className="animate-spin text-[#6893ff]" />
-                <span className="ml-2 text-[#BCCBF2] text-sm">Loading messages...</span>
-              </div>
-            ) : previewData?.error ? (
-              <p className="text-red-400 text-sm text-center py-6">Failed to load chat messages.</p>
-            ) : previewData?.pairs?.length === 0 ? (
-              <p className="text-[#BCCBF2] text-sm text-center py-6">No messages in this chat.</p>
-            ) : (
-              previewData?.pairs?.map((pair, i) => (
-                <div key={i} className="space-y-2">
-                  {/* Question */}
-                  <div className="flex items-start gap-2">
-                    <span className="text-[10px] font-bold text-[#6893ff] uppercase tracking-wider mt-0.5 flex-shrink-0">Q:</span>
-                    <p className="text-white text-sm leading-relaxed">{pair.question}</p>
-                  </div>
-                  {/* Answer */}
-                  <div className="flex items-start gap-2 pl-1">
-                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mt-0.5 flex-shrink-0">A:</span>
-                    <p className="text-[#d0d8e8] text-sm leading-relaxed whitespace-pre-wrap">{pair.answer}</p>
-                  </div>
-                  {i < previewData.pairs.length - 1 && (
-                    <hr className="border-[#2a3a5c] mt-2" />
-                  )}
+            {previewItem && (
+              <div className="space-y-3">
+                {/* Question */}
+                <div className="flex items-start gap-2">
+                  <span className="text-[10px] font-bold text-[#6893ff] uppercase tracking-wider mt-0.5 flex-shrink-0">Q:</span>
+                  <p className="text-white text-sm leading-relaxed">{previewItem.title}</p>
                 </div>
-              ))
+                {/* Answer */}
+                <div className="flex items-start gap-2 pl-1">
+                  <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mt-0.5 flex-shrink-0">A:</span>
+                  <p className="text-[#d0d8e8] text-sm leading-relaxed whitespace-pre-wrap">
+                    {previewItem.answer || '(No response yet)'}
+                  </p>
+                </div>
+              </div>
             )}
           </div>
-
-          {/* Open full chat button */}
-          {previewData?.sessionId && !previewLoading && (
-            <div className="pt-3 border-t border-[#2a3a5c] mt-2">
-              <button
-                onClick={handleOpenFullChat}
-                className="w-full py-2 rounded-lg text-sm font-medium text-white transition-colors hover:opacity-90"
-                style={{ background: 'linear-gradient(180deg, #3b6fe0 0%, #0a387b 100%)' }}
-                data-testid="open-full-chat-btn"
-              >
-                Open Full Chat
-              </button>
-            </div>
-          )}
         </DialogContent>
       </Dialog>
     </>
