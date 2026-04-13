@@ -2,18 +2,19 @@
 set -e
 
 echo "=========================================="
-echo " FRDS — Backend Startup"
+echo " CBP Training Assistant — Backend Startup"
 echo "=========================================="
 
 # ---------------------------------------------------------------------------
 # 1. Verify local models are available
 # ---------------------------------------------------------------------------
 echo "[1/6] Checking local embedding models..."
-if [ -d "${MODELS_DIR:-/app/models}/dense" ] && [ -d "${MODELS_DIR:-/app/models}/sparse" ]; then
-    echo "  Dense model:  ${MODELS_DIR:-/app/models}/dense"
-    echo "  Sparse model: ${MODELS_DIR:-/app/models}/sparse"
+MODELS_PATH="${MODELS_DIR:-/app/models}"
+if [ -d "$MODELS_PATH" ]; then
+    echo "  Models directory: $MODELS_PATH"
+    ls -la "$MODELS_PATH" 2>/dev/null | head -5 || true
 else
-    echo "  WARNING: Local models not found at ${MODELS_DIR:-/app/models}"
+    echo "  WARNING: Models directory not found at $MODELS_PATH"
     echo "  Models will be downloaded on first use (slower startup)"
 fi
 
@@ -25,9 +26,9 @@ until python -c "
 import psycopg2, os
 try:
     conn = psycopg2.connect(
-        dbname=os.environ.get('PG_DB_NAME', 'frds_db'),
-        user=os.environ.get('PG_DB_USER', 'frds_user'),
-        password=os.environ.get('PG_DB_PASSWORD', 'frds_pass'),
+        dbname=os.environ.get('PG_DB_NAME', 'cbp_db'),
+        user=os.environ.get('PG_DB_USER', 'cbp_user'),
+        password=os.environ.get('PG_DB_PASSWORD', 'cbp_pass'),
         host=os.environ.get('PG_DB_HOST', 'localhost'),
         port=os.environ.get('PG_DB_PORT', '5432'),
     )
@@ -67,25 +68,28 @@ python manage.py collectstatic --noinput 2>/dev/null || true
 # ---------------------------------------------------------------------------
 # 6. Ingest data into Qdrant with local embeddings
 # ---------------------------------------------------------------------------
-echo "[6/6] Loading embedding models and ingesting FRDS data..."
+echo "[6/6] Loading embedding models and ingesting CBP training data..."
 python -c "
 import django, os
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'frds_project.settings')
 django.setup()
 
-print('  Loading local embedding models...')
+print('  Loading local embedding models via FastEmbed...')
 from chat.rag_service import ensure_collection, ingest_documents, get_dense_model, get_sparse_model
 
 # Pre-load models
 dense_model = get_dense_model()
 sparse_model = get_sparse_model()
-print(f'  Dense model loaded (dim: {dense_model.get_sentence_embedding_dimension()})')
-print(f'  Sparse model (SPLADE): {\"loaded\" if sparse_model else \"not available\"}')
 
-from chat.mock_data import FRDS_INCIDENTS
+# Test embedding to get dimension
+test_emb = list(dense_model.embed(['test']))[0]
+print(f'  Dense model loaded (dim: {len(test_emb)})')
+print(f'  Sparse model (BM25): {\"loaded\" if sparse_model else \"not available\"}')
+
+from chat.mock_data import CBP_TRAINING_CONTENT
 ensure_collection()
-ingest_documents(FRDS_INCIDENTS)
-print(f'  Ingested {len(FRDS_INCIDENTS)} documents with hybrid embeddings.')
+ingest_documents(CBP_TRAINING_CONTENT)
+print(f'  Ingested {len(CBP_TRAINING_CONTENT)} CBP training documents.')
 "
 
 echo "=========================================="
