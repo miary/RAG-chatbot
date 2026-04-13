@@ -148,13 +148,15 @@ def send_message(request):
 
     # LLM: generate response (with timing)
     t_llm = time.time()
-    bot_text = generate_response(user_text, context_docs)
+    result = generate_response(user_text, context_docs)
+    bot_text = result['text']
+    llm_meta = result['llm_meta']
     llm_ms = int((time.time() - t_llm) * 1000)
     total_ms = rag_ms + llm_ms
 
     top_score = max((d.get('score', 0) for d in context_docs), default=0.0)
 
-    # Save bot message with sources and timing
+    # Save bot message with sources, timing, and LLM metrics
     sources = [
         {'title': d.get('title', ''), 'score': round(d.get('score', 0), 3)}
         for d in context_docs
@@ -168,6 +170,11 @@ def send_message(request):
         llm_latency_ms=llm_ms,
         total_latency_ms=total_ms,
         top_rag_score=round(top_score, 4),
+        rag_num_sources=len(context_docs),
+        llm_model=llm_meta.get('model', ''),
+        llm_prompt_tokens=llm_meta.get('prompt_tokens', 0),
+        llm_response_tokens=llm_meta.get('response_tokens', 0),
+        llm_tokens_per_second=llm_meta.get('tokens_per_second', 0.0),
     )
 
     # Update session title if it was auto-generated
@@ -246,6 +253,17 @@ def conversation_list(request):
             'timestamp': umsg.timestamp.isoformat(),
             'rating': bot_msg.rating if bot_msg else None,
             'sources': bot_msg.sources if bot_msg else [],
+            'metrics': {
+                'rag_latency_ms': bot_msg.rag_latency_ms,
+                'llm_latency_ms': bot_msg.llm_latency_ms,
+                'total_latency_ms': bot_msg.total_latency_ms,
+                'top_rag_score': bot_msg.top_rag_score,
+                'rag_num_sources': bot_msg.rag_num_sources,
+                'llm_model': bot_msg.llm_model,
+                'llm_prompt_tokens': bot_msg.llm_prompt_tokens,
+                'llm_response_tokens': bot_msg.llm_response_tokens,
+                'llm_tokens_per_second': bot_msg.llm_tokens_per_second,
+            } if bot_msg else None,
         })
 
     return Response(conversations)
@@ -404,6 +422,12 @@ def rag_performance_analytics(request):
         max_rag_score=Max('top_rag_score'),
         min_rag_score=Min('top_rag_score'),
         total_responses=Count('id'),
+        avg_prompt_tokens=Avg('llm_prompt_tokens'),
+        avg_response_tokens=Avg('llm_response_tokens'),
+        avg_tokens_per_second=Avg('llm_tokens_per_second'),
+        total_prompt_tokens=Sum('llm_prompt_tokens'),
+        total_response_tokens=Sum('llm_response_tokens'),
+        avg_rag_sources=Avg('rag_num_sources'),
     )
     
     # Time range: last 30 days
@@ -421,6 +445,9 @@ def rag_performance_analytics(request):
             avg_llm=Avg('llm_latency_ms'),
             avg_total=Avg('total_latency_ms'),
             avg_score=Avg('top_rag_score'),
+            avg_tps=Avg('llm_tokens_per_second'),
+            avg_prompt_tok=Avg('llm_prompt_tokens'),
+            avg_resp_tok=Avg('llm_response_tokens'),
             count=Count('id'),
         )
         .order_by('date')
@@ -455,6 +482,12 @@ def rag_performance_analytics(request):
             'min_llm_latency_ms': stats['min_llm_latency'] or 0,
             'max_rag_score': round(stats['max_rag_score'] or 0, 4),
             'min_rag_score': round(stats['min_rag_score'] or 0, 4),
+            'avg_prompt_tokens': round(stats['avg_prompt_tokens'] or 0, 1),
+            'avg_response_tokens': round(stats['avg_response_tokens'] or 0, 1),
+            'avg_tokens_per_second': round(stats['avg_tokens_per_second'] or 0, 2),
+            'total_prompt_tokens': stats['total_prompt_tokens'] or 0,
+            'total_response_tokens': stats['total_response_tokens'] or 0,
+            'avg_rag_sources': round(stats['avg_rag_sources'] or 0, 1),
         },
         'latency_over_time': [
             {
@@ -463,6 +496,9 @@ def rag_performance_analytics(request):
                 'avg_llm_ms': round(item['avg_llm'] or 0, 2),
                 'avg_total_ms': round(item['avg_total'] or 0, 2),
                 'avg_score': round(item['avg_score'] or 0, 4),
+                'avg_tps': round(item['avg_tps'] or 0, 2),
+                'avg_prompt_tokens': round(item['avg_prompt_tok'] or 0, 1),
+                'avg_response_tokens': round(item['avg_resp_tok'] or 0, 1),
                 'count': item['count'],
             }
             for item in latency_by_day

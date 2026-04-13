@@ -5,7 +5,12 @@ from .models import ChatSession, ChatMessage
 class ChatMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatMessage
-        fields = ['id', 'session', 'message_type', 'text', 'timestamp', 'rating', 'sources']
+        fields = [
+            'id', 'session', 'message_type', 'text', 'timestamp', 'rating', 'sources',
+            'rag_latency_ms', 'llm_latency_ms', 'total_latency_ms', 'top_rag_score',
+            'rag_num_sources', 'llm_model', 'llm_prompt_tokens', 'llm_response_tokens',
+            'llm_tokens_per_second',
+        ]
         read_only_fields = ['id', 'timestamp']
 
 

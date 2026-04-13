@@ -72,6 +72,7 @@ const ChatApp = () => {
           date: new Date(c.timestamp).toLocaleDateString(),
           rating: c.rating,
           sources: c.sources || [],
+          metrics: c.metrics || null,
         }))
       );
     } catch (e) {

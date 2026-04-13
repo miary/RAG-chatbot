@@ -11,6 +11,13 @@ import { FormatText } from './ChatArea';
 
 const LIMIT_OPTIONS = [10, 20, 30, 50, 100];
 
+const formatMs = (ms) => {
+  if (!ms) return '—';
+  if (ms >= 60000) return `${(ms / 60000).toFixed(1)}m`;
+  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${ms}ms`;
+};
+
 const Sidebar = ({
   chatHistory,
   connectionStatus,
@@ -192,6 +199,53 @@ const Sidebar = ({
                       : '(No response yet)'}
                   </div>
                 </div>
+
+                {/* Metrics */}
+                {previewItem.metrics && (
+                  <div className="mt-3 pt-3 border-t border-[#2a3a5c]" data-testid="conversation-metrics">
+                    <p className="text-[10px] font-bold text-[#BCCBF2] uppercase tracking-wider mb-2">Performance Metrics</p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px]">
+                      <div className="flex justify-between">
+                        <span className="text-[#BCCBF2]">RAG Latency</span>
+                        <span className="text-white font-medium">{formatMs(previewItem.metrics.rag_latency_ms)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#BCCBF2]">LLM Latency</span>
+                        <span className="text-white font-medium">{formatMs(previewItem.metrics.llm_latency_ms)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#BCCBF2]">Total Time</span>
+                        <span className="text-white font-medium">{formatMs(previewItem.metrics.total_latency_ms)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#BCCBF2]">RAG Score</span>
+                        <span className="text-white font-medium">{previewItem.metrics.top_rag_score?.toFixed(3) || '—'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#BCCBF2]">Sources</span>
+                        <span className="text-white font-medium">{previewItem.metrics.rag_num_sources || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#BCCBF2]">Model</span>
+                        <span className="text-white font-medium">{previewItem.metrics.llm_model || '—'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#BCCBF2]">Prompt Tokens</span>
+                        <span className="text-white font-medium">{previewItem.metrics.llm_prompt_tokens || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#BCCBF2]">Response Tokens</span>
+                        <span className="text-white font-medium">{previewItem.metrics.llm_response_tokens || 0}</span>
+                      </div>
+                      {previewItem.metrics.llm_tokens_per_second > 0 && (
+                        <div className="flex justify-between col-span-2">
+                          <span className="text-[#BCCBF2]">Throughput</span>
+                          <span className="text-white font-medium">{previewItem.metrics.llm_tokens_per_second} tok/s</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

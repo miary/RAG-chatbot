@@ -9,7 +9,10 @@ import {
   TrendingUp,
   Star,
   Zap,
-  Target
+  Target,
+  Hash,
+  Gauge,
+  FileText
 } from "lucide-react";
 import {
   LineChart,
@@ -238,7 +241,7 @@ const Dashboard = () => {
 
     return (
       <div className="dashboard-content" data-testid="rag-tab-content">
-        {/* Summary Stats */}
+        {/* Summary Stats - Row 1: Latency */}
         <div className="stats-grid">
           <StatCard
             title="Total Responses"
@@ -266,6 +269,36 @@ const Dashboard = () => {
             subtitle={`Range: ${summary.min_rag_score.toFixed(2)} - ${summary.max_rag_score.toFixed(2)}`}
             icon={Target}
             color="#ff6b6b"
+          />
+        </div>
+
+        {/* Summary Stats - Row 2: LLM Token Metrics */}
+        <div className="stats-grid">
+          <StatCard
+            title="Avg Prompt Tokens"
+            value={Math.round(summary.avg_prompt_tokens || 0)}
+            subtitle={`Total: ${(summary.total_prompt_tokens || 0).toLocaleString()}`}
+            icon={FileText}
+            color="#a78bfa"
+          />
+          <StatCard
+            title="Avg Response Tokens"
+            value={Math.round(summary.avg_response_tokens || 0)}
+            subtitle={`Total: ${(summary.total_response_tokens || 0).toLocaleString()}`}
+            icon={Hash}
+            color="#f472b6"
+          />
+          <StatCard
+            title="Avg Throughput"
+            value={summary.avg_tokens_per_second ? `${summary.avg_tokens_per_second} tok/s` : "N/A"}
+            icon={Gauge}
+            color="#34d399"
+          />
+          <StatCard
+            title="Avg Sources/Query"
+            value={summary.avg_rag_sources || 0}
+            icon={Target}
+            color="#fb923c"
           />
         </div>
 

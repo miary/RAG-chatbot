@@ -167,19 +167,22 @@ def _fallback_response(query: str, context_docs: list[dict]) -> str:
     return '\n'.join(parts)
 
 
-def generate_response(query: str, context_docs: list[dict], *, think: bool = False) -> str:
+def generate_response(query: str, context_docs: list[dict], *, think: bool = False) -> dict:
     """Generate a response using Ollama with RAG context.
 
-    Args:
-        query: The trainee's question.
-        context_docs: Retrieved training documents from Qdrant.
-        think: If True, enable Gemma 4 thinking mode for step-by-step reasoning.
-
-    Falls back to a deterministic context-based response if Ollama
-    is unavailable (e.g. insufficient memory in the container).
+    Returns a dict with:
+        text (str): The generated response.
+        llm_meta (dict): Token counts and model info from Ollama.
     """
     prompt = build_rag_prompt(query, context_docs)
     system = SYSTEM_PROMPT_THINKING if think else SYSTEM_PROMPT
+
+    empty_meta = {
+        'model': settings.OLLAMA_MODEL,
+        'prompt_tokens': 0,
+        'response_tokens': 0,
+        'tokens_per_second': 0.0,
+    }
 
     try:
         client = get_ollama_client()
@@ -192,7 +195,27 @@ def generate_response(query: str, context_docs: list[dict], *, think: bool = Fal
             options=GEMMA4_OPTIONS,
             think=think,
         )
-        return response['message']['content']
+
+        # Extract token metadata from Ollama response
+        prompt_tokens = response.get('prompt_eval_count', 0) or 0
+        response_tokens = response.get('eval_count', 0) or 0
+        eval_duration_ns = response.get('eval_duration', 0) or 0
+        tokens_per_second = 0.0
+        if eval_duration_ns > 0 and response_tokens > 0:
+            tokens_per_second = round(response_tokens / (eval_duration_ns / 1e9), 2)
+
+        return {
+            'text': response['message']['content'],
+            'llm_meta': {
+                'model': response.get('model', settings.OLLAMA_MODEL),
+                'prompt_tokens': prompt_tokens,
+                'response_tokens': response_tokens,
+                'tokens_per_second': tokens_per_second,
+            },
+        }
     except Exception as e:
         logger.warning('Ollama unavailable (%s), using RAG-context fallback.', e)
-        return _fallback_response(query, context_docs)
+        return {
+            'text': _fallback_response(query, context_docs),
+            'llm_meta': {**empty_meta, 'model': 'fallback'},
+        }

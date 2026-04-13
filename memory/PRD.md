@@ -11,35 +11,33 @@ Adapt a full-stack RAG chatbot into a "CBP Training Assistant" using local-only 
 - **LLM**: Local Ollama Docker container (gemma4:latest)
 - **DevOps**: Docker Compose (all services local)
 
-## Completed Features
-- [x] Qdrant FastEmbed integration (BM25 + nomic-embed-text-v1.5) — Feb 2026
-- [x] Rebranded to "CBP Training Assistant" with mock CBP training data — Feb 2026
-- [x] Cleaned requirements.txt (removed unused google-* deps) — Feb 2026
-- [x] Fixed docker-compose.yml dependency issues for Qdrant v1.17 — Feb 2026
-- [x] 508-compliant React UI (removed floating robot, external badges, added pill badge) — Feb 2026
-- [x] Fixed FastEmbed dimension attribute error in entrypoint — Feb 2026
-- [x] Local Ollama Docker service + download_ollama_model.py (gemma4:latest) — Feb 2026
-- [x] Comprehensive README.md update — Feb 2026
-- [x] Fixed .gitignore to allow .env.docker tracking — Feb 2026
-- [x] Gemma 4 prompt engineering (sampling params, thinking mode, centralized prompts) — Feb 2026
-- [x] UI Fix: Chat area scrolling (min-h-0 flex fix) — Feb 2026
-- [x] UI Fix: Chat history popup dialog (Shadcn Dialog with Q&A preview) — Feb 2026
-- [x] UI Fix: Dynamic chat history updates (sidebar refreshes after each response) — Feb 2026
-- [x] Global conversations model — Apr 2026
-  - New `GET /api/conversations/?limit=N` endpoint returns Q&A pairs across ALL sessions
-  - Sidebar now shows individual questions (not sessions), visible to all users
-  - Configurable display limit (default 20, options: 10/20/30/50/100) stored in localStorage
-  - Each new question creates its own session; sessionId resets after each response
+## DB Schema — ChatMessage
+- id, session, message_type, text, timestamp, rating, sources
+- rag_latency_ms, llm_latency_ms, total_latency_ms, top_rag_score
+- rag_num_sources, llm_model, llm_prompt_tokens, llm_response_tokens, llm_tokens_per_second
 
-## Key API Endpoints
-- `GET /api/` — Health check
-- `GET /api/status/` — Service status (Ollama, Qdrant, PostgreSQL)
-- `GET /api/conversations/?limit=20` — Global Q&A history (newest first)
-- `GET /api/sessions/` — Session list
-- `GET /api/sessions/{id}/` — Session detail with messages
-- `POST /api/chat/` — Send message (creates session if needed)
-- `PATCH /api/messages/{id}/feedback/` — Rate a response
-- `POST /api/ingest/` — Ingest training data into Qdrant
+## Completed Features
+- [x] Qdrant FastEmbed integration (BM25 + nomic-embed-text-v1.5)
+- [x] Rebranded to "CBP Training Assistant" with mock CBP training data
+- [x] Cleaned requirements.txt (removed unused google-* deps)
+- [x] Fixed docker-compose.yml dependency issues for Qdrant v1.17
+- [x] 508-compliant React UI (removed floating robot, external badges, added pill badge)
+- [x] Fixed FastEmbed dimension attribute error in entrypoint
+- [x] Local Ollama Docker service + download_ollama_model.py (gemma4:latest)
+- [x] Comprehensive README.md update
+- [x] Fixed .gitignore to allow .env.docker tracking
+- [x] Gemma 4 prompt engineering (sampling params, thinking mode, centralized prompts)
+- [x] UI Fix: Chat area scrolling, dashboard scrolling
+- [x] UI Fix: Chat history popup dialog (Shadcn Dialog with Q&A preview + markdown formatting)
+- [x] Dynamic chat history updates (sidebar refreshes after each response)
+- [x] Global conversations model (not session-based, configurable display limit)
+- [x] LLM & RAG metrics tracking — Apr 2026
+  - New DB fields: rag_num_sources, llm_model, llm_prompt_tokens, llm_response_tokens, llm_tokens_per_second
+  - generate_response() now returns dict with text + llm_meta (token counts from Ollama)
+  - Conversations API includes metrics per Q&A pair
+  - Popup dialog shows Performance Metrics section
+  - Dashboard RAG tab shows 2 rows of stat cards: latency row + LLM token metrics row
+  - Analytics API aggregates avg/total prompt tokens, response tokens, throughput, sources/query
 
 ## Backlog
 - P1: User Authentication setup
