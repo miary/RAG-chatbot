@@ -22,8 +22,8 @@ import shutil
 # Models directory - this will be the FastEmbed cache directory
 MODELS_DIR = os.environ.get('MODELS_DIR', 'models')
 
-# Model names - using quantized version (uses model_quantized.onnx)
-DENSE_MODEL_NAME = os.environ.get('DENSE_MODEL_NAME', 'nomic-ai/nomic-embed-text-v1.5-Q')
+# Model names - using full precision model (uses model.onnx)
+DENSE_MODEL_NAME = os.environ.get('DENSE_MODEL_NAME', 'nomic-ai/nomic-embed-text-v1.5')
 SPARSE_MODEL_NAME = os.environ.get('SPARSE_MODEL_NAME', 'Qdrant/bm25')
 
 

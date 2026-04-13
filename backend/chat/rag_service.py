@@ -38,7 +38,7 @@ DENSE_MODEL_PATH = os.path.join(MODELS_DIR, 'dense')
 SPARSE_MODEL_PATH = os.path.join(MODELS_DIR, 'sparse')
 
 # FastEmbed model names
-DENSE_MODEL_NAME = os.environ.get('DENSE_MODEL_NAME', 'nomic-ai/nomic-embed-text-v1.5-Q')
+DENSE_MODEL_NAME = os.environ.get('DENSE_MODEL_NAME', 'nomic-ai/nomic-embed-text-v1.5')
 SPARSE_MODEL_NAME = os.environ.get('SPARSE_MODEL_NAME', 'Qdrant/bm25')
 
 # Embedding dimensions for nomic-embed-text with Matryoshka (MRL)
