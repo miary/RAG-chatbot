@@ -11,7 +11,8 @@
 7. [Environment Configuration](#7-environment-configuration)
 8. [API Reference](#8-api-reference)
 9. [RAG Pipeline](#9-rag-pipeline)
-10. [508 Accessibility Compliance](#10-508-accessibility-compliance)
+10. [Prompt Engineering (Gemma 4)](#10-prompt-engineering-gemma-4)
+11. [508 Accessibility Compliance](#11-508-accessibility-compliance)
 
 ---
 
@@ -26,7 +27,9 @@
 | **Hybrid Search** | Combines dense embeddings (nomic-embed-text-v1.5 with MRL) and sparse embeddings (BM25) using reciprocal rank fusion |
 | **Local Embedding Models** | Pre-downloaded models via Qdrant FastEmbed stored in `./models` directory |
 | **Local LLM** | Ollama running locally with gemma4:latest model |
+| **Gemma 4 Prompt Engineering** | Optimized system prompts, sampling parameters, and optional thinking mode per official Gemma 4 docs |
 | **WebSocket Streaming** | Real-time response streaming for better user experience |
+| **Global Chat History** | All Q&A pairs visible to all users with configurable display limit |
 | **5-Star Rating System** | Trainees can rate bot responses from 1-5 stars |
 | **508 Accessibility** | Full ARIA support, keyboard navigation, screen reader compatible |
 | **Responsive Design** | Dark UI for desktop, tablet, and mobile |
@@ -41,24 +44,27 @@
 - **User Messages**: Right-aligned blue bubbles with timestamp
 - **Bot Messages**: Left-aligned white bubbles with markdown rendering
 
-### 2.2 5-Star Rating System
+### 2.2 Global Chat History
+- All Q&A pairs are stored in the database and visible to all users
+- Sidebar displays individual questions (most recent first)
+- Click any question to view the full answer in a popup dialog
+- Configurable display limit (default: 20, options: 10/20/30/50/100) via sidebar settings
+- History updates dynamically after each answered question (no page refresh needed)
+
+### 2.3 5-Star Rating System
 - Interactive star rating for each bot response
 - Ratings persisted to PostgreSQL
 - Aggregated in analytics dashboard
 
-### 2.3 WebSocket Streaming
+### 2.4 WebSocket Streaming
 - Real-time character-by-character response display
 - Streaming status indicators
 - Automatic REST API fallback
 
-### 2.4 Chat History Sidebar
-- Session list ordered by recent activity
-- Click to load previous conversations
-- New Chat button to start fresh
-
 ### 2.5 Analytics Dashboard
 - **Usage Metrics**: Total messages, sessions, ratings
 - **Performance Metrics**: RAG latency, LLM latency, retrieval scores
+- Scrollable layout for all dashboard content
 
 ---
 
@@ -72,6 +78,7 @@
 | **Axios** | 1.9.0 | HTTP client |
 | **Recharts** | 2.15.3 | Analytics charts |
 | **Lucide React** | 0.507.0 | Icons |
+| **Shadcn UI** | — | Dialog, Button, and other UI components |
 
 ### 3.2 Backend
 
@@ -87,7 +94,7 @@
 | Technology | Purpose |
 |---|---|
 | **Qdrant FastEmbed** | Local embedding generation (ONNX) |
-| **nomic-embed-text-v1.5** | Dense embeddings (768d → 256d MRL) |
+| **nomic-embed-text-v1.5** | Dense embeddings (768d -> 256d MRL) |
 | **Qdrant/bm25** | Sparse embeddings (BM25) |
 | **Ollama** | Local LLM server |
 | **gemma4:latest** | Language model for response generation |
@@ -111,36 +118,36 @@
 ## 4. System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                              DOCKER COMPOSE                              │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                  │
-│  │   nginx     │    │  frontend   │    │   backend   │                  │
-│  │  (proxy)    │◄───│   (React)   │    │  (Django)   │                  │
-│  │  :8080      │    │   :3000     │    │   :8001     │                  │
-│  └──────┬──────┘    └─────────────┘    └──────┬──────┘                  │
-│         │                                      │                         │
-│         │           ┌──────────────────────────┼──────────────────┐      │
-│         │           │                          │                  │      │
-│         │           ▼                          ▼                  ▼      │
-│         │    ┌─────────────┐           ┌─────────────┐    ┌───────────┐ │
-│         │    │  postgres   │           │   qdrant    │    │  ollama   │ │
-│         │    │   (DB)      │           │  (vectors)  │    │  (LLM)    │ │
-│         │    │   :5432     │           │   :6333     │    │  :11434   │ │
-│         │    └─────────────┘           └─────────────┘    └───────────┘ │
-│         │                                                                │
-│         └────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  VOLUMES:                                                                │
-│  ├── postgres_data     (PostgreSQL data)                                │
-│  ├── qdrant_data       (Vector database)                                │
-│  └── ./models          (Embedding + LLM models)                         │
-│      ├── models--nomic-ai--nomic-embed-text-v1.5/   (FastEmbed)         │
-│      ├── models--Qdrant--bm25/                      (FastEmbed)         │
-│      └── ollama/                                    (Ollama models)     │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
++-----------------------------------------------------------------------+
+|                              DOCKER COMPOSE                            |
++-----------------------------------------------------------------------+
+|                                                                        |
+|  +-----------+    +-------------+    +-----------+                     |
+|  |   nginx   |    |  frontend   |    |  backend  |                     |
+|  |  (proxy)  |<---|   (React)   |    |  (Django) |                     |
+|  |  :8080    |    |   :3000     |    |   :8001   |                     |
+|  +-----+-----+    +-------------+    +-----+-----+                    |
+|        |                                    |                          |
+|        |           +------------------------+------------------+       |
+|        |           |                        |                  |       |
+|        |           v                        v                  v       |
+|        |    +-----------+           +-----------+    +-----------+     |
+|        |    |  postgres |           |  qdrant   |    |  ollama   |     |
+|        |    |   (DB)    |           | (vectors) |    |  (LLM)    |     |
+|        |    |   :5432   |           |   :6333   |    |  :11434   |     |
+|        |    +-----------+           +-----------+    +-----------+     |
+|        |                                                               |
+|        +---------------------------------------------------------------+
+|                                                                        |
+|  VOLUMES:                                                              |
+|  +-- postgres_data     (PostgreSQL data)                               |
+|  +-- qdrant_data       (Vector database)                               |
+|  +-- ./models          (Embedding + LLM models)                        |
+|      +-- models--nomic-ai--nomic-embed-text-v1.5/   (FastEmbed)        |
+|      +-- models--Qdrant--bm25/                      (FastEmbed)        |
+|      +-- ollama/                                    (Ollama models)    |
+|                                                                        |
++------------------------------------------------------------------------+
 ```
 
 ### Services
@@ -164,7 +171,7 @@ All models are stored locally in the `./models` directory for offline deployment
 
 | Model | Type | Size | Purpose |
 |---|---|---|---|
-| `nomic-ai/nomic-embed-text-v1.5` | Dense | ~547 MB | Semantic similarity (768d → 256d MRL) |
+| `nomic-ai/nomic-embed-text-v1.5` | Dense | ~547 MB | Semantic similarity (768d -> 256d MRL) |
 | `Qdrant/bm25` | Sparse | ~20 MB | Keyword matching |
 
 **Download embedding models:**
@@ -193,16 +200,16 @@ This script:
 
 ```
 models/
-├── models--nomic-ai--nomic-embed-text-v1.5/
-│   ├── blobs/
-│   │   └── model.onnx              # Dense embedding model
-│   └── snapshots/
-├── models--Qdrant--bm25/
-│   └── ...                         # BM25 sparse model
-└── ollama/
-    └── models/
-        ├── blobs/                  # Model weights (~5 GB)
-        └── manifests/              # Model metadata
++-- models--nomic-ai--nomic-embed-text-v1.5/
+|   +-- blobs/
+|   |   +-- model.onnx              # Dense embedding model
+|   +-- snapshots/
++-- models--Qdrant--bm25/
+|   +-- ...                         # BM25 sparse model
++-- ollama/
+    +-- models/
+        +-- blobs/                  # Model weights (~5 GB)
+        +-- manifests/              # Model metadata
 ```
 
 ---
@@ -365,7 +372,29 @@ Response: {
 }
 ```
 
-### 8.4 WebSocket Streaming
+### 8.4 Global Conversations (Q&A History)
+
+```
+GET /api/conversations/?limit=20
+
+Response: [
+  {
+    "id": "<uuid>",
+    "question": "What are customs regulations?",
+    "answer": "Based on our CBP training materials...",
+    "answer_id": "<uuid>",
+    "timestamp": "2026-04-13T16:00:00Z",
+    "rating": null,
+    "sources": [{"title": "...", "score": 0.85}]
+  },
+  ...
+]
+```
+
+Query parameters:
+- `limit` (int, default 20, max 100): Number of most recent Q&A pairs to return
+
+### 8.5 WebSocket Streaming
 
 ```
 ws://localhost:8080/ws/chat/{session_id}/
@@ -376,11 +405,29 @@ Receive: {"type": "chunk", "text": "The Electronic System..."}
 Receive: {"type": "done", "sources": [...]}
 ```
 
-### 8.5 Ingest Training Data
+### 8.6 Ingest Training Data
 
 ```
 POST /api/ingest/
 Response: {"status": "success", "documents_ingested": 12}
+```
+
+### 8.7 Sessions & Feedback
+
+```
+GET    /api/sessions/                         # List all sessions
+GET    /api/sessions/{id}/                    # Session detail with messages
+DELETE /api/sessions/{id}/                    # Delete a session
+DELETE /api/sessions/{id}/clear/              # Clear messages in session
+PATCH  /api/messages/{id}/feedback/           # Rate a response (1-5 stars)
+       Body: {"rating": 5}
+```
+
+### 8.8 Analytics
+
+```
+GET /api/analytics/usage/    # Usage stats, messages over time, rating distribution
+GET /api/analytics/rag/      # RAG/LLM latency, score quality, performance trends
 ```
 
 ---
@@ -419,19 +466,52 @@ nomic-embed-text is trained with MRL, allowing truncation from 768 to 256 dimens
 
 ---
 
-## 10. 508 Accessibility Compliance
+## 10. Prompt Engineering (Gemma 4)
 
-### 10.1 ARIA Support
+The system prompt and generation parameters are optimized for Gemma 4 following the official documentation:
+
+- **References**:
+  - [Gemma 4 Prompt Formatting](https://ai.google.dev/gemma/docs/core/prompt-formatting-gemma4)
+  - [Gemma 4 Model Card & Best Practices](https://ai.google.dev/gemma/docs/core/model_card_4)
+
+### 10.1 Sampling Parameters
+
+Per the Gemma 4 model card recommended configuration:
+
+| Parameter | Value |
+|---|---|
+| `temperature` | 1.0 |
+| `top_p` | 0.95 |
+| `top_k` | 64 |
+
+### 10.2 System Prompt Architecture
+
+- **System message** defines the assistant's identity, role scope, and response guidelines
+- **User message** carries only the RAG context and the trainee's question (no role duplication)
+- Centralized in `backend/chat/llm_service.py` as `SYSTEM_PROMPT` constant
+
+### 10.3 Thinking Mode (Optional)
+
+Gemma 4 supports step-by-step reasoning via the `think=True` parameter in the Ollama API:
+- A separate `SYSTEM_PROMPT_THINKING` variant includes an adaptive-thought-efficiency hint
+- Reduces thinking tokens by ~20% while preserving output quality
+- Can be toggled per-request for complex policy interpretation tasks
+
+---
+
+## 11. 508 Accessibility Compliance
+
+### 11.1 ARIA Support
 - `role` attributes for semantic meaning
 - `aria-label` for interactive elements
 - `aria-live` for dynamic content
 
-### 10.2 Keyboard Navigation
+### 11.2 Keyboard Navigation
 - Tab navigation through all interactive elements
 - Enter key to submit messages
 - Visible focus indicators
 
-### 10.3 Screen Reader Support
+### 11.3 Screen Reader Support
 - Descriptive labels for all actions
 - Hidden decorative elements with `aria-hidden`
 - Semantic HTML structure

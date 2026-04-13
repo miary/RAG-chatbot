@@ -106,7 +106,8 @@ input:focus {
 
 /* ========== Dashboard Styles ========== */
 .dashboard-container {
-  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
   background-color: #0a1628;
   color: #fff;
   padding: 24px;
