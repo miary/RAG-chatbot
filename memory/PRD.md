@@ -20,14 +20,11 @@ Adapt a full-stack RAG chatbot into a "CBP Training Assistant" using local-only 
 - [x] Fixed FastEmbed dimension attribute error in entrypoint — Feb 2026
 - [x] Local Ollama Docker service + download_ollama_model.py (gemma4:latest) — Feb 2026
 - [x] Comprehensive README.md update — Feb 2026
-- [x] Fixed .gitignore to allow .env.docker tracking (!.env.docker whitelist) — Feb 2026
-- [x] Gemma 4 prompt engineering overhaul — Feb 2026
-  - Applied official Gemma 4 sampling parameters (temp=1.0, top_p=0.95, top_k=64)
-  - Fixed stale "FRDS" system prompt in WebSocket streaming path
-  - Restructured prompts: system role defines identity/behaviour, user message carries context+question only
-  - Added thinking mode support (opt-in via `think=True`)
-  - Added adaptive-thought-efficiency hint per Gemma 4 docs
-  - Centralized prompt constants in llm_service.py (single source of truth)
+- [x] Fixed .gitignore to allow .env.docker tracking — Feb 2026
+- [x] Gemma 4 prompt engineering (sampling params, thinking mode, centralized prompts) — Feb 2026
+- [x] UI Fix: Chat area scrolling (min-h-0 flex fix) — Feb 2026
+- [x] UI Fix: Chat history popup dialog (Shadcn Dialog with Q&A preview) — Feb 2026
+- [x] UI Fix: Dynamic chat history updates (sidebar refreshes after each response) — Feb 2026
 
 ## Backlog
 - P1: User Authentication setup
