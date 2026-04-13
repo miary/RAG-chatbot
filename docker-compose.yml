@@ -4,25 +4,22 @@
 # Services:
 #   1. postgres     — PostgreSQL 15 (relational database)
 #   2. qdrant       — Qdrant vector database (local instance)
-#   3. backend      — Django 5 + Daphne (ASGI) + RAG pipeline
-#   4. frontend     — React 19 built assets served by Nginx
-#   5. nginx        — Reverse proxy (unified entry point)
+#   3. ollama       — Ollama LLM server (local instance)
+#   4. backend      — Django 5 + Daphne (ASGI) + RAG pipeline
+#   5. frontend     — React 19 built assets served by Nginx
+#   6. nginx        — Reverse proxy (unified entry point)
 #
-# Local models (pre-downloaded via FastEmbed, mounted from ./models):
-#   - Dense model:  nomic-embed-text-v1.5 (768d -> 256d MRL)
-#   - Sparse model: Qdrant/bm25 for hybrid search
-#
-# External dependencies:
-#   - Ollama LLM server at OLLAMA_BASE_URL (for text generation only)
+# Local models (pre-downloaded, mounted from ./models):
+#   - Dense embeddings:  nomic-embed-text-v1.5 (FastEmbed/ONNX)
+#   - Sparse embeddings: Qdrant/bm25 (FastEmbed)
+#   - LLM:               gemma3:4b (Ollama)
 #
 # Usage:
-#   1. First, download models: python download_models.py
-#   2. docker compose up -d --build
-#   3. docker compose logs -f backend
-#   4. docker compose down -v
-#
-# Note: Both dense (nomic-embed-text) and sparse (BM25) models are loaded
-#       locally via Qdrant FastEmbed for offline/air-gapped deployments.
+#   1. Download embedding models: python download_models.py
+#   2. Download Ollama model:     python download_ollama_model.py
+#   3. Start services:            docker compose up -d --build
+#   4. View logs:                 docker compose logs -f backend
+#   5. Stop services:             docker compose down -v
 # =============================================================================
 
 services:
@@ -66,6 +63,22 @@ services:
       - cbp-net
 
   # -------------------------------------------------------------------------
+  # Ollama — Local LLM Server
+  # -------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: cbp-ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_EXTERNAL_PORT:-11434}:11434"
+    volumes:
+      - ./models/ollama:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    networks:
+      - cbp-net
+
+  # -------------------------------------------------------------------------
   # Backend — Django 5 + Daphne (ASGI) + Local Embeddings
   # -------------------------------------------------------------------------
   backend:
@@ -77,6 +90,7 @@ services:
     depends_on:
       - postgres
       - qdrant
+      - ollama
     environment:
       # Django
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-change-me-in-production-use-a-long-random-string}
@@ -95,8 +109,6 @@ services:
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-cbp_training}
 
       # Local embedding models via FastEmbed (mounted from ./models)
-      # Dense: nomic-ai/nomic-embed-text-v1.5 (768d -> 256d via MRL)
-      # Sparse: Qdrant/bm25 for hybrid search
       MODELS_DIR: /app/models
       DENSE_MODEL_NAME: ${DENSE_MODEL_NAME:-nomic-ai/nomic-embed-text-v1.5}
       SPARSE_MODEL_NAME: ${SPARSE_MODEL_NAME:-Qdrant/bm25}
@@ -104,9 +116,9 @@ services:
       MRL_EMBEDDING_DIM: ${MRL_EMBEDDING_DIM:-256}
       USE_MRL: ${USE_MRL:-true}
 
-      # Ollama (remote server - for LLM generation only)
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+      # Ollama (local container)
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma3:4b}
     volumes:
       - ./models:/app/models:ro
     ports:

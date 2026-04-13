@@ -45,7 +45,7 @@ done
 # ---------------------------------------------------------------------------
 # 3. Wait for Qdrant to be ready
 # ---------------------------------------------------------------------------
-echo "[3/6] Waiting for Qdrant at ${QDRANT_HOST:-localhost}:${QDRANT_PORT:-6333}..."
+echo "[3/7] Waiting for Qdrant at ${QDRANT_HOST:-localhost}:${QDRANT_PORT:-6333}..."
 until curl -sf "http://${QDRANT_HOST:-localhost}:${QDRANT_PORT:-6333}/healthz" > /dev/null 2>&1; do
     echo "  ...Qdrant not yet available, retrying in 2s"
     sleep 2
@@ -53,22 +53,33 @@ done
 echo "  Qdrant is ready."
 
 # ---------------------------------------------------------------------------
-# 4. Run Django migrations
+# 4. Wait for Ollama to be ready
 # ---------------------------------------------------------------------------
-echo "[4/6] Running Django migrations..."
+echo "[4/7] Waiting for Ollama at ${OLLAMA_BASE_URL:-http://localhost:11434}..."
+OLLAMA_URL="${OLLAMA_BASE_URL:-http://localhost:11434}"
+until curl -sf "${OLLAMA_URL}/api/tags" > /dev/null 2>&1; do
+    echo "  ...Ollama not yet available, retrying in 2s"
+    sleep 2
+done
+echo "  Ollama is ready."
+
+# ---------------------------------------------------------------------------
+# 5. Run Django migrations
+# ---------------------------------------------------------------------------
+echo "[5/7] Running Django migrations..."
 python manage.py migrate --noinput
 echo "  Migrations complete."
 
 # ---------------------------------------------------------------------------
-# 5. Collect static files (optional, for admin)
+# 6. Collect static files (optional, for admin)
 # ---------------------------------------------------------------------------
-echo "[5/6] Collecting static files..."
+echo "[6/7] Collecting static files..."
 python manage.py collectstatic --noinput 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
-# 6. Ingest data into Qdrant with local embeddings
+# 7. Ingest data into Qdrant with local embeddings
 # ---------------------------------------------------------------------------
-echo "[6/6] Loading embedding models and ingesting CBP training data..."
+echo "[7/7] Loading embedding models and ingesting CBP training data..."
 python -c "
 import django, os
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'frds_project.settings')
