@@ -88,27 +88,55 @@ const WelcomeState = () => (
   </div>
 );
 
-/* --- Format bot text with markdown-like bold --- */
+/* --- Format bot text with markdown-like rendering --- */
 const FormatText = ({ text }) => {
   if (!text) return null;
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+
+  const lines = text.split('\n');
   return (
     <>
-      {parts.map((part, i) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          return <strong key={i}>{part.slice(2, -2)}</strong>;
+      {lines.map((line, li) => {
+        // Blank line = paragraph break
+        if (line.trim() === '') {
+          return <br key={li} />;
         }
-        // Handle newlines
-        return part.split('\n').map((line, j) => (
-          <React.Fragment key={`${i}-${j}`}>
-            {j > 0 && <br />}
-            {line}
+
+        // Unordered list item: "- text" or "* text"
+        const listMatch = line.match(/^(\s*)[-*]\s+(.+)/);
+        if (listMatch) {
+          return (
+            <div key={li} className="flex items-start gap-1.5 ml-2 my-0.5">
+              <span className="mt-[7px] w-1 h-1 rounded-full bg-current flex-shrink-0 opacity-60" aria-hidden="true" />
+              <span>{renderInline(listMatch[2])}</span>
+            </div>
+          );
+        }
+
+        return (
+          <React.Fragment key={li}>
+            {li > 0 && lines[li - 1].trim() !== '' && <br />}
+            {renderInline(line)}
           </React.Fragment>
-        ));
+        );
       })}
     </>
   );
 };
+
+/** Render inline markdown: **bold**, *italic* */
+function renderInline(text) {
+  // Split on **bold** and *italic* patterns
+  const tokens = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  return tokens.map((tok, i) => {
+    if (tok.startsWith('**') && tok.endsWith('**')) {
+      return <strong key={i}>{tok.slice(2, -2)}</strong>;
+    }
+    if (tok.startsWith('*') && tok.endsWith('*') && tok.length > 2) {
+      return <em key={i}>{tok.slice(1, -1)}</em>;
+    }
+    return <React.Fragment key={i}>{tok}</React.Fragment>;
+  });
+}
 
 /* --- Bot Message --- */
 const BotMessage = ({ message, onFeedback }) => (
@@ -280,3 +308,4 @@ const ChatArea = ({
 };
 
 export default ChatArea;
+export { FormatText };

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, MessageSquare, Settings2, ChevronDown } from 'lucide-react';
+import { Plus, MessageSquare, Settings2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -7,6 +7,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from './ui/dialog';
+import { FormatText } from './ChatArea';
 
 const LIMIT_OPTIONS = [10, 20, 30, 50, 100];
 
@@ -185,9 +186,11 @@ const Sidebar = ({
                 {/* Answer */}
                 <div className="flex items-start gap-2 pl-1">
                   <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mt-0.5 flex-shrink-0">A:</span>
-                  <p className="text-[#d0d8e8] text-sm leading-relaxed whitespace-pre-wrap">
-                    {previewItem.answer || '(No response yet)'}
-                  </p>
+                  <div className="text-[#d0d8e8] text-sm leading-relaxed">
+                    {previewItem.answer
+                      ? <FormatText text={previewItem.answer} />
+                      : '(No response yet)'}
+                  </div>
                 </div>
               </div>
             )}
